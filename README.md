@@ -1,2 +1,2 @@
 # Hiphop-flow-and-rythym-analyzer
-metin ve ses verililerinii analiz ederek bir şarkının flow haritasını çıkaran bir araç
+A tool that analyzes text and audio data to generate the flow map of a track.
