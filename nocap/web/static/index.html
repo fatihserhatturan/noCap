@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>noCap — Flow Map</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ── Top bar ─────────────────────────────────────────────────────────── -->
+  <header id="top-bar">
+    <div id="brand" onclick="resetToUpload()">noCap</div>
+    <div id="track-info">
+      <span id="track-title"></span>
+      <span id="track-meta"></span>
+    </div>
+    <button id="new-track-btn" hidden onclick="resetToUpload()">+ New Track</button>
+  </header>
+
+  <!-- ── Upload screen ───────────────────────────────────────────────────── -->
+  <div id="upload-screen">
+
+    <div id="drop-zone" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <div id="drop-icon">♪</div>
+      <p id="drop-label">Drop your track here</p>
+      <p id="drop-sub">MP3, WAV, AIFF, M4A</p>
+      <button id="select-btn" onclick="document.getElementById('file-input').click()">Select File</button>
+      <input type="file" id="file-input" accept=".mp3,.wav,.aiff,.aif,.m4a,.ogg,.flac" hidden>
+    </div>
+
+    <!-- progress (shown while analyzing) -->
+    <div id="progress-panel" hidden>
+      <div id="progress-filename"></div>
+
+      <div id="steps">
+        <div class="step" id="step-load">
+          <div class="step-dot"></div>
+          <div class="step-body">
+            <span class="step-label">Loading audio</span>
+            <span class="step-msg"></span>
+          </div>
+        </div>
+        <div class="step" id="step-beat">
+          <div class="step-dot"></div>
+          <div class="step-body">
+            <span class="step-label">Detecting beats</span>
+            <span class="step-msg"></span>
+          </div>
+        </div>
+        <div class="step" id="step-transcribe">
+          <div class="step-dot"></div>
+          <div class="step-body">
+            <span class="step-label">Transcribing with Whisper</span>
+            <span class="step-msg"></span>
+          </div>
+        </div>
+        <div class="step" id="step-align">
+          <div class="step-dot"></div>
+          <div class="step-body">
+            <span class="step-label">Building flow map</span>
+            <span class="step-msg"></span>
+          </div>
+        </div>
+      </div>
+
+      <div id="progress-bar-wrap">
+        <div id="progress-bar-fill"></div>
+      </div>
+
+      <div id="progress-error" hidden></div>
+    </div>
+
+  </div>
+
+  <!-- ── Viewer screen ───────────────────────────────────────────────────── -->
+  <div id="viewer-screen" hidden>
+
+    <div id="layout">
+      <main id="canvas-area">
+        <div id="canvas-scroll">
+          <canvas id="flowmap-canvas"></canvas>
+        </div>
+      </main>
+
+      <aside id="sidebar">
+        <section>
+          <h3>Flow Metrics</h3>
+          <div id="metrics-list"></div>
+        </section>
+        <section>
+          <h3>Rhyme Groups</h3>
+          <div id="rhyme-legend"></div>
+        </section>
+        <section>
+          <h3>Bar Detail</h3>
+          <div id="bar-detail">Hover over a bar</div>
+        </section>
+      </aside>
+    </div>
+
+    <footer id="player-bar">
+      <button id="play-btn" disabled>▶</button>
+      <div id="timeline-wrap">
+        <div id="timeline">
+          <div id="timeline-progress"></div>
+          <div id="timeline-cursor"></div>
+        </div>
+      </div>
+      <span id="time-display">0:00 / 0:00</span>
+      <audio id="audio-el" crossorigin="anonymous" preload="metadata"></audio>
+    </footer>
+
+  </div>
+
+  <!-- ── Tooltip ─────────────────────────────────────────────────────────── -->
+  <div id="tooltip" hidden></div>
+
+  <script src="flowmap.js"></script>
+  <script src="player.js"></script>
+</body>
+</html>
