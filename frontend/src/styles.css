@@ -67,18 +67,66 @@ button, select { font: inherit; }
 }
 .ghost-btn:hover { border-color: var(--accent); color: var(--accent); }
 .top-actions { display: flex; align-items: center; gap: 8px; }
-.icon-btn {
-  width: 30px;
+.export-menu {
+  position: relative;
+}
+.export-menu summary {
+  list-style: none;
+}
+.export-menu summary::-webkit-details-marker {
+  display: none;
+}
+.export-trigger {
   height: 30px;
-  display: grid;
-  place-items: center;
+  min-width: 104px;
+}
+.export-chevron {
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.export-menu[open] .export-chevron {
+  transform: rotate(180deg);
+}
+.export-popover {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  top: calc(100% + 7px);
+  width: 100%;
+  padding: 5px;
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 6px;
+  background: rgba(17, 17, 17, 0.98);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+.export-option {
+  width: 100%;
+  min-height: 30px;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 4px;
   background: transparent;
   color: var(--muted);
+  padding: 6px 8px;
+  text-align: left;
   cursor: pointer;
 }
-.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.export-option:hover {
+  background: var(--bg3);
+  color: var(--accent);
+}
+.export-option:hover .export-option-icon {
+  color: var(--accent);
+}
+.export-option-icon {
+  width: 15px;
+  height: 15px;
+  justify-self: center;
+  color: var(--muted);
+}
 
 .upload-screen {
   flex: 1;

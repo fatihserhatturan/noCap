@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FileCode2, FileImage, Plus, Upload } from 'lucide-react';
+import type { MouseEvent } from 'react';
+import { ChevronDown, Download, FileCode2, FileImage, Plus, Upload } from 'lucide-react';
 import { analyzeTrack, fetchFlowmap, hasAudio } from './api/analyze';
 import { FlowPixiStage } from './components/FlowPixiStage';
 import { MetricsPanel } from './components/MetricsPanel';
@@ -130,16 +131,7 @@ export function App() {
         </div>
         {mode === 'viewer' && (
           <div className="top-actions">
-            {flowmap && (
-              <>
-                <button className="icon-btn" onClick={() => void downloadFlowmapPng(flowmap)} title="Export PNG" aria-label="Export PNG">
-                  <FileImage size={15} />
-                </button>
-                <button className="icon-btn" onClick={() => downloadFlowmapSvg(flowmap)} title="Export SVG" aria-label="Export SVG">
-                  <FileCode2 size={15} />
-                </button>
-              </>
-            )}
+            {flowmap && <ExportMenu flowmap={flowmap} />}
             <button className="ghost-btn" onClick={reset}>
               <Plus size={15} /> New Track
             </button>
@@ -190,6 +182,44 @@ export function App() {
         </>
       )}
     </div>
+  );
+}
+
+function ExportMenu({ flowmap }: { flowmap: FlowMap }) {
+  function closeMenu(event: MouseEvent<HTMLButtonElement>) {
+    event.currentTarget.closest('details')?.removeAttribute('open');
+  }
+
+  return (
+    <details className="export-menu">
+      <summary className="ghost-btn export-trigger">
+        <Download size={15} />
+        Export
+        <ChevronDown className="export-chevron" size={14} />
+      </summary>
+      <div className="export-popover">
+        <button
+          className="export-option"
+          onClick={(event) => {
+            closeMenu(event);
+            void downloadFlowmapPng(flowmap);
+          }}
+        >
+          <FileImage className="export-option-icon" size={15} />
+          <span>PNG</span>
+        </button>
+        <button
+          className="export-option"
+          onClick={(event) => {
+            closeMenu(event);
+            downloadFlowmapSvg(flowmap);
+          }}
+        >
+          <FileCode2 className="export-option-icon" size={15} />
+          <span>SVG</span>
+        </button>
+      </div>
+    </details>
   );
 }
 
