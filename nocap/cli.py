@@ -68,13 +68,18 @@ def analyze(
 
         # optional vocal separation
         if separate:
-            from nocap.audio.separator import separate as do_separate, is_available
+            from nocap.audio.separator import assess_vocal_stem, separate as do_separate, is_available
             if not is_available():
                 click.echo("  [warn] Demucs not installed — skipping vocal separation.")
             else:
                 click.echo("  Isolating vocals with Demucs…")
-                transcription_audio = do_separate(audio_data)
-                click.echo("  Vocals extracted.")
+                vocals = do_separate(audio_data)
+                stem_quality = assess_vocal_stem(vocals, audio_data)
+                if stem_quality.usable:
+                    transcription_audio = vocals
+                    click.echo("  Vocals extracted.")
+                else:
+                    click.echo(f"  [warn] Demucs vocals skipped: {stem_quality.reason}. Using original mix.")
 
     resolved_title = title or (audio.stem if audio else lyrics.stem if lyrics else "untitled")
     audio_path_str = str(audio.resolve()) if audio else None

@@ -133,19 +133,24 @@ def start(
                     vocals_path = None
                     transcription_audio = audio_data
 
-                    from nocap.audio.separator import separate as do_sep, is_available
+                    from nocap.audio.separator import assess_vocal_stem, separate as do_sep, is_available
                     if is_available():
                         yield _sse("progress", step="transcribe",
                                    msg="Isolating vocals with Demucs…")
                         try:
                             vocals = do_sep(audio_data)
-                            transcription_audio = vocals
-                            import soundfile as sf
-                            vocals_tmp = tempfile.NamedTemporaryFile(
-                                suffix="_vocals.wav", delete=False)
-                            vocals_tmp.close()
-                            sf.write(vocals_tmp.name, vocals.y, vocals.sr)
-                            vocals_path = Path(vocals_tmp.name)
+                            stem_quality = assess_vocal_stem(vocals, audio_data)
+                            if stem_quality.usable:
+                                transcription_audio = vocals
+                                import soundfile as sf
+                                vocals_tmp = tempfile.NamedTemporaryFile(
+                                    suffix="_vocals.wav", delete=False)
+                                vocals_tmp.close()
+                                sf.write(vocals_tmp.name, vocals.y, vocals.sr)
+                                vocals_path = Path(vocals_tmp.name)
+                            else:
+                                yield _sse("progress", step="transcribe",
+                                           msg=f"Vocals skipped: {stem_quality.reason}; using original mix…")
                         except Exception:
                             if vocals_path is not None:
                                 vocals_path.unlink(missing_ok=True)

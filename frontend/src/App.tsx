@@ -10,6 +10,7 @@ import { SourcePanel } from './components/SourcePanel';
 import { downloadFlowmapPng, downloadFlowmapSvg } from './export/flowExport';
 import { sampleFlowmap } from './sampleFlowmap';
 import type { AnalyzeMessage, FlowMap, FlowSyllable, StepId, StepState } from './types';
+import logoUrl from '../../source/logo-transparent.png';
 
 const initialSteps: Record<StepId, StepState> = {
   load: { status: 'idle', msg: '' },
@@ -124,7 +125,9 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="top-bar">
-        <button className="brand" onClick={reset}>noCap</button>
+        <button className="brand" onClick={reset} aria-label="noCap home">
+          <img src={logoUrl} alt="noCap" />
+        </button>
         <div className="track-info">
           <span className="track-title">{title}</span>
           <span className="track-meta">{meta}</span>

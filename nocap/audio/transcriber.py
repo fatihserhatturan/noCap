@@ -39,6 +39,7 @@ def transcribe(
     initial_prompt: str | None = None,
     beam_size: int = 5,
     temperature: float = 0.0,
+    compression_ratio_threshold: float = 2.2,
 ) -> TranscriptResult:
     """Transcribe audio using OpenAI Whisper.
 
@@ -74,6 +75,7 @@ def transcribe(
         condition_on_previous_text=False,  # prevents runaway repetition hallucinations
         no_speech_threshold=0.6,
         logprob_threshold=-1.2,
+        compression_ratio_threshold=compression_ratio_threshold,
     )
 
     words: list[TranscriptWord] = []
