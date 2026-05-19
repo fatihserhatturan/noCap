@@ -1,79 +1,55 @@
 from __future__ import annotations
 
-import subprocess
-import sys
-import tempfile
-from pathlib import Path
-
-from nocap.audio.loader import AudioData, load
+from nocap.audio.loader import AudioData
 
 
-def separate(audio: AudioData, model: str = "htdemucs") -> AudioData:
-    """Isolate vocals using Demucs. Returns a vocals-only AudioData.
-
-    Requires the optional `separator` extra:
-        pip install nocap[separator]
-    """
+def separate(audio: AudioData, model_name: str = "htdemucs") -> AudioData:
+    """Isolate vocals using Demucs. Returns a vocals-only AudioData."""
     try:
-        import demucs  # noqa: F401
+        import torch
+        from demucs.pretrained import get_model
+        from demucs.apply import apply_model
     except ImportError as e:
-        raise ImportError(
-            "demucs is required for vocal separation: pip install demucs"
-        ) from e
+        raise ImportError("demucs is required: pip install demucs") from e
 
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp)
+    import numpy as np
+    import librosa
 
-        # demucs CLI: --two-stems=vocals produces vocals.wav + no_vocals.wav
-        cmd = [
-            sys.executable, "-m", "demucs",
-            "--two-stems", "vocals",
-            "--model", model,
-            "--out", str(tmp_path),
-            str(audio.path),
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise RuntimeError(
-                f"Demucs failed (exit {result.returncode}):\n{result.stderr}"
-            )
+    model = get_model(model_name)
+    model.eval()
 
-        # demucs places output at <out>/<model>/<stem>/<filename>.wav
-        vocals_path = _find_vocals(tmp_path, model, audio.path.stem)
-        if not vocals_path:
-            raise FileNotFoundError(
-                f"Could not find Demucs vocals output in {tmp_path}"
-            )
+    target_sr = model.samplerate
+    y_resampled = librosa.resample(audio.y, orig_sr=audio.sr, target_sr=target_sr)
 
-        # copy to a stable temp file before the tmpdir is cleaned up
-        import shutil
-        stable = Path(tempfile.mktemp(suffix="_vocals.wav"))
-        shutil.copy2(vocals_path, stable)
+    # mono → stereo (C, T)
+    if y_resampled.ndim == 1:
+        wav = np.stack([y_resampled, y_resampled], axis=0)
+    else:
+        wav = y_resampled
 
-    return load(stable, target_sr=audio.sr)
+    wav_tensor = torch.tensor(wav, dtype=torch.float32).unsqueeze(0)  # (1, C, T)
+
+    with torch.no_grad():
+        sources = apply_model(model, wav_tensor, device="cpu", progress=False)
+    # sources shape: (1, num_sources, C, T)
+    # model.sources is list like ['drums','bass','other','vocals']
+    vocal_idx = model.sources.index("vocals")
+    vocals = sources[0, vocal_idx]  # (C, T)
+
+    vocals_np = vocals.mean(dim=0).numpy()  # stereo → mono
+    vocals_np = librosa.resample(vocals_np, orig_sr=target_sr, target_sr=audio.sr)
+
+    return AudioData(
+        y=vocals_np.astype(np.float32),
+        sr=audio.sr,
+        duration=len(vocals_np) / audio.sr,
+        path=audio.path,
+    )
 
 
 def is_available() -> bool:
     try:
-        import demucs  # noqa: F401
+        from demucs.pretrained import get_model  # noqa: F401
         return True
     except ImportError:
         return False
-
-
-# ── helpers ───────────────────────────────────────────────────────────────────
-
-def _find_vocals(out_dir: Path, model: str, stem: str) -> Path | None:
-    """Locate the vocals file produced by Demucs (layout varies by version)."""
-    candidates = [
-        out_dir / model / "vocals" / f"{stem}.wav",
-        out_dir / model / stem / "vocals.wav",
-        out_dir / "vocals" / f"{stem}.wav",
-    ]
-    for c in candidates:
-        if c.exists():
-            return c
-    # broad glob fallback
-    for p in out_dir.rglob("vocals.wav"):
-        return p
-    return None

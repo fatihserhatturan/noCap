@@ -48,6 +48,9 @@ def align(
         rhyme_labels = [""] * len(all_words)
 
     beat_times = [b.time for b in grid.beats]
+    if not beat_times:
+        return []
+
     all_timed = all(line.start >= 0 for line in lines)
 
     if all_timed:
@@ -172,6 +175,9 @@ def align_words(
         rhyme_labels = [""] * len(word_analyses)
 
     beat_times = [b.time for b in grid.beats]
+    if not beat_times:
+        return []
+
     result: list[AlignedSyllable] = []
 
     for wi, (tw, wa) in enumerate(zip(transcript_words, word_analyses)):

@@ -34,6 +34,11 @@ def track(audio: AudioData, time_signature: int = 4) -> BeatGrid:
     beat_times: np.ndarray = librosa.frames_to_time(beat_frames, sr=audio.sr)
 
     bpm = float(np.atleast_1d(tempo)[0])
+    if not np.isfinite(bpm) or bpm <= 0:
+        bpm = 90.0
+
+    if len(beat_times) == 0:
+        return build_from_bpm(bpm, audio.duration, time_signature=time_signature)
 
     beats: list[Beat] = []
     for i, t in enumerate(beat_times):

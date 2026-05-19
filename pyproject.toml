@@ -19,6 +19,7 @@ dependencies = [
 
 [project.optional-dependencies]
 separator = ["demucs>=4.0"]
+dev = ["pytest>=8.0"]
 
 [project.scripts]
 nocap = "nocap.cli:cli"

@@ -23,6 +23,14 @@ ENV/
 *.whl
 *.tar.gz
 
+# Frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
 # Testing
 .pytest_cache/
 .coverage

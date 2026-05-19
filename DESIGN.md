@@ -27,12 +27,11 @@ noCap/
 │   │   ├── flow_metrics.py  # Yoğunluk, senkopasyon, tutarlılık metrikleri
 │   │   └── exporter.py      # FlowMap JSON üretimi
 │   └── web/
-│       ├── server.py        # Python HTTP sunucusu (http.server veya Flask)
-│       └── static/
-│           ├── index.html   # Ana görselleştirme sayfası
-│           ├── flowmap.js   # Piano-roll tarzı canvas renderer
-│           ├── player.js    # Ses oynatıcı + beat sync
-│           └── style.css
+│       └── server.py        # Flask API + production frontend dist servisi
+├── frontend/                # React + Vite + PixiJS görselleştirme arayüzü
+│   ├── src/
+│   ├── package.json
+│   └── vite.config.ts
 ├── tests/
 ├── pyproject.toml
 └── DESIGN.md
@@ -97,12 +96,13 @@ noCap/
 
 ### 4. `nocap/web/` — İnteraktif Görselleştirme
 
-**Python HTTP sunucusu** (`python -m http.server` veya minimal Flask):
-- CLI komutu analizi tamamlayınca `flowmap.json` dosyasını üretir
-- Tarayıcıyı otomatik açar (`webbrowser.open`)
-- Statik dosyalar + JSON servis eder
+**Flask API + React/PixiJS frontend:**
+- `nocap dev`, Flask API ve Vite frontend'i birlikte başlatır
+- `nocap serve`, build edilmiş `frontend/dist` klasörünü servis eder
+- Analiz akışı SSE ile ilerleme mesajları döner
+- Flow map JSON, mix audio ve opsiyonel vocal stem API üzerinden sunulur
 
-**Görselleştirme bileşenleri (Canvas/SVG tabanlı):**
+**Görselleştirme bileşenleri (PixiJS tabanlı):**
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -186,10 +186,11 @@ separator = ["demucs>=4.0"]    # Vokal izolasyonu (ağır bağımlılık, opsiyo
 - [ ] `cli.py` (temel `analyze` komutu)
 
 ### Faz 2 — Görselleştirme
-- [ ] `web/server.py` + statik dosya yapısı
-- [ ] Piano-roll canvas renderer (`flowmap.js`)
-- [ ] Ses oynatıcı + beat sync (`player.js`)
-- [ ] Hover tooltip ve kafiye highlight
+- [ ] `web/server.py` Flask API + frontend dist servisi
+- [ ] React/Vite uygulama kabuğu
+- [ ] PixiJS piano-roll renderer
+- [ ] Ses oynatıcı + beat sync
+- [ ] Hover tooltip, playback highlight ve kafiye filtresi
 
 ### Faz 3 — Whisper Entegrasyonu
 - [ ] `audio/transcriber.py` (kelime düzeyinde timestamp)
@@ -198,7 +199,6 @@ separator = ["demucs>=4.0"]    # Vokal izolasyonu (ağır bağımlılık, opsiyo
 
 ### Faz 4 — Gelişmiş Metrikler
 - [ ] Multi-bar karşılaştırma görünümü
-- [ ] Rapçi bazlı istatistik profili (birden fazla şarkı)
 - [ ] PNG/SVG export butonu
 
 ---

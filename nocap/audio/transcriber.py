@@ -28,11 +28,17 @@ class TranscriptResult:
         return len(self.words) > 0
 
 
+HIP_HOP_PROMPT = None  # prompt causes hallucination on vocal stems; omit
+
+
 def transcribe(
     audio: AudioData,
     model_name: str = "base",
     language: str | None = None,
     progress_callback=None,
+    initial_prompt: str | None = None,
+    beam_size: int = 5,
+    temperature: float = 0.0,
 ) -> TranscriptResult:
     """Transcribe audio using OpenAI Whisper.
 
@@ -56,28 +62,28 @@ def transcribe(
     if progress_callback:
         progress_callback("Transcribing audio…")
 
-    # Resample to 16 kHz (Whisper's expected rate) using the already-loaded array.
-    # Passing a numpy array bypasses Whisper's ffmpeg requirement entirely.
-    import numpy as np
     audio_arr = _resample_to_16k(audio)
+    prompt = initial_prompt  # None by default; explicit prompt can still be passed
 
-    # attempt word-level timestamps
+    base_kwargs: dict = dict(
+        language=language,
+        verbose=False,
+        initial_prompt=prompt,
+        beam_size=beam_size,
+        temperature=temperature,
+        condition_on_previous_text=False,  # prevents runaway repetition hallucinations
+        no_speech_threshold=0.6,
+        logprob_threshold=-1.2,
+    )
+
     words: list[TranscriptWord] = []
     try:
-        result = model.transcribe(
-            audio_arr,
-            word_timestamps=True,
-            language=language,
-            verbose=False,
-        )
+        result = model.transcribe(audio_arr, word_timestamps=True, **base_kwargs)
         words = _extract_words(result)
     except Exception:
-        result = model.transcribe(
-            audio_arr,
-            language=language,
-            verbose=False,
-        )
+        result = model.transcribe(audio_arr, **base_kwargs)
 
+    words = _filter_words(words)
     timed_lines = _segments_to_timed_lines(result)
 
     return TranscriptResult(
@@ -140,26 +146,14 @@ def _resample_to_16k(audio: AudioData):
 
 def _patch_ssl() -> None:
     """Point Python's SSL to certifi's CA bundle if system certs are missing."""
-    import ssl
     try:
-        ssl.create_default_context().load_default_certs()
-        # quick smoke-test
-        import urllib.request
-        urllib.request.urlopen("https://openaipublic.azureedge.net", timeout=3)
-    except Exception:
-        try:
-            import certifi, os
-            os.environ.setdefault("SSL_CERT_FILE", certifi.where())
-            os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
-            # monkey-patch ssl for urllib
-            _orig = ssl.create_default_context
-            def _patched(*a, **kw):
-                ctx = _orig(*a, **kw)
-                ctx.load_verify_locations(certifi.where())
-                return ctx
-            ssl.create_default_context = _patched
-        except ImportError:
-            pass  # certifi not available — nothing we can do
+        import certifi
+        import os
+    except ImportError:
+        return
+
+    os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+    os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
@@ -178,6 +172,11 @@ def _extract_words(result: dict) -> list[TranscriptWord]:
                 probability=float(w.get("probability", 1.0)),
             ))
     return words
+
+
+def _filter_words(words: list[TranscriptWord]) -> list[TranscriptWord]:
+    """Remove words with very low Whisper confidence scores."""
+    return [w for w in words if w.probability >= 0.25]
 
 
 def _segments_to_timed_lines(result: dict) -> list[TimedLine]:
