@@ -29,7 +29,7 @@ export interface SyllableRect {
 export function computeLayout(flowmap: FlowMap, containerWidth: number): FlowLayout {
   const signature = flowmap.metadata.time_signature || 4;
   const minGrid = signature * FLOW_DIMS.beatW + FLOW_DIMS.labelW + FLOW_DIMS.densW;
-  const available = Math.max(containerWidth - 48, minGrid);
+  const available = Math.max(containerWidth - 28, minGrid);
   const beatW = Math.max(FLOW_DIMS.beatW, Math.floor((available - FLOW_DIMS.labelW - FLOW_DIMS.densW) / signature));
   return {
     width: FLOW_DIMS.labelW + signature * beatW + FLOW_DIMS.densW,

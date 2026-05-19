@@ -4,14 +4,17 @@ import { Pause, Play } from 'lucide-react';
 export function PlayerBar({
   enabled,
   source,
+  playRange,
   onTimeChange,
 }: {
   enabled: boolean;
   source: 'mix' | 'vocals';
+  playRange: { id: number; start: number; end: number } | null;
   onTimeChange: (time: number) => void;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const rafRef = useRef<number | null>(null);
+  const segmentEndRef = useRef<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [time, setTime] = useState(0);
@@ -19,6 +22,17 @@ export function PlayerBar({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    if (!enabled) {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+      segmentEndRef.current = null;
+      setPlaying(false);
+      setDuration(0);
+      setTime(0);
+      onTimeChange(0);
+      return;
+    }
     const saved = audio.currentTime;
     audio.src = source === 'vocals' ? '/api/audio/vocals' : '/api/audio';
     audio.load();
@@ -28,7 +42,7 @@ export function PlayerBar({
     };
     audio.addEventListener('loadedmetadata', restore, { once: true });
     return () => audio.removeEventListener('loadedmetadata', restore);
-  }, [source]);
+  }, [enabled, source, onTimeChange]);
 
   useEffect(() => {
     if (!playing) {
@@ -39,6 +53,12 @@ export function PlayerBar({
       const current = audioRef.current?.currentTime || 0;
       setTime(current);
       onTimeChange(current);
+      if (segmentEndRef.current !== null && current >= segmentEndRef.current) {
+        if (audioRef.current) audioRef.current.pause();
+        segmentEndRef.current = null;
+        setPlaying(false);
+        return;
+      }
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -47,13 +67,27 @@ export function PlayerBar({
     };
   }, [playing, onTimeChange]);
 
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !enabled || !playRange) return;
+    segmentEndRef.current = playRange.end;
+    audio.currentTime = playRange.start;
+    setTime(playRange.start);
+    onTimeChange(playRange.start);
+    void audio.play().then(() => setPlaying(true)).catch(() => {
+      segmentEndRef.current = null;
+    });
+  }, [enabled, playRange, onTimeChange]);
+
   async function toggle() {
     const audio = audioRef.current;
     if (!audio || !enabled) return;
     if (audio.paused) {
+      segmentEndRef.current = null;
       await audio.play();
       setPlaying(true);
     } else {
+      segmentEndRef.current = null;
       audio.pause();
       setPlaying(false);
     }
@@ -64,6 +98,7 @@ export function PlayerBar({
     const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     const next = pct * duration;
     if (audioRef.current) audioRef.current.currentTime = next;
+    segmentEndRef.current = null;
     setTime(next);
     onTimeChange(next);
   }

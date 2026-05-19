@@ -1,5 +1,15 @@
+import { useMemo, useState } from 'react';
 import type { FlowMap } from '../types';
 import { buildColorMap, colorToCss } from '../flow/colors';
+
+type CompareMetric = 'density' | 'syncopation' | 'stressed_ratio' | 'syllable_count';
+
+const compareOptions: Array<{ key: CompareMetric; label: string }> = [
+  { key: 'density', label: 'Density' },
+  { key: 'syncopation', label: 'Sync' },
+  { key: 'stressed_ratio', label: 'Stress' },
+  { key: 'syllable_count', label: 'Count' },
+];
 
 export function MetricsPanel({
   flowmap,
@@ -13,7 +23,18 @@ export function MetricsPanel({
   hoveredBar: number | null;
 }) {
   const colors = buildColorMap(flowmap.rhyme_chains.map((chain) => chain.group));
+  const [compareMetric, setCompareMetric] = useState<CompareMetric>('density');
   const bar = hoveredBar ? flowmap.bars.find((item) => item.bar_no === hoveredBar) : null;
+  const comparedBars = useMemo(() => {
+    const max = Math.max(...flowmap.bars.map((item) => item[compareMetric]), 0.01);
+    return [...flowmap.bars]
+      .sort((left, right) => right[compareMetric] - left[compareMetric])
+      .slice(0, 10)
+      .map((item) => ({
+        bar: item,
+        pct: Math.min(1, item[compareMetric] / max),
+      }));
+  }, [flowmap, compareMetric]);
   const metrics = [
     { label: 'Avg Density', value: `${flowmap.summary.avg_density} syl/beat`, pct: flowmap.summary.avg_density / 8 },
     { label: 'Peak Density', value: `${flowmap.summary.peak_density} syl/beat`, pct: flowmap.summary.peak_density / 8 },
@@ -36,6 +57,31 @@ export function MetricsPanel({
               <div className="m-bar">
                 <div style={{ width: `${Math.min(100, metric.pct * 100)}%` }} />
               </div>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section>
+        <h3>Bar Compare</h3>
+        <div className="segmented">
+          {compareOptions.map((option) => (
+            <button
+              key={option.key}
+              className={compareMetric === option.key ? 'seg-active' : ''}
+              onClick={() => setCompareMetric(option.key)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <div className="compare-list">
+          {comparedBars.map(({ bar: item, pct }) => (
+            <div key={item.bar_no} className={`compare-row ${hoveredBar === item.bar_no ? 'compare-active' : ''}`}>
+              <span className="compare-label">Bar {item.bar_no}</span>
+              <div className="compare-track">
+                <div style={{ width: `${Math.max(4, pct * 100)}%` }} />
+              </div>
+              <b>{formatCompareValue(item[compareMetric], compareMetric)}</b>
             </div>
           ))}
         </div>
@@ -82,4 +128,11 @@ export function MetricsPanel({
       </section>
     </aside>
   );
+}
+
+function formatCompareValue(value: number, metric: CompareMetric): string {
+  if (metric === 'syncopation' || metric === 'stressed_ratio') {
+    return `${(value * 100).toFixed(0)}%`;
+  }
+  return value.toFixed(metric === 'syllable_count' ? 0 : 1);
 }

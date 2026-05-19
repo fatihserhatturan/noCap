@@ -25,7 +25,6 @@ export function SourcePanel({
           >
             <Mic2 size={15} />
             <span>Vocals Only</span>
-            <small>Demucs</small>
           </button>
         </div>
         {!hasVocals && <div className="muted-note">Vocals not available</div>}

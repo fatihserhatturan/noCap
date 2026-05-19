@@ -24,9 +24,11 @@ interface Props {
   currentTime: number;
   activeRhyme: string | null;
   onBarHover: (barNo: number | null) => void;
+  onBarPlay: (barNo: number) => void;
+  onWordPlay: (syllable: FlowSyllable) => void;
 }
 
-export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover }: Props) {
+export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover, onBarPlay, onWordPlay }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<Application | null>(null);
   const sceneRef = useRef<Container | null>(null);
@@ -35,8 +37,11 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover }:
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const rectsRef = useRef<SyllableRect[]>([]);
   const hoveredRectRef = useRef<SyllableRect | null>(null);
+  const hoveredBarRef = useRef<number | null>(null);
   const layoutRef = useRef<FlowLayout | null>(null);
   const onBarHoverRef = useRef(onBarHover);
+  const onBarPlayRef = useRef(onBarPlay);
+  const onWordPlayRef = useRef(onWordPlay);
   const [pixiReady, setPixiReady] = useState(false);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [containerWidth, setContainerWidth] = useState(900);
@@ -49,6 +54,8 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover }:
 
   layoutRef.current = layout;
   onBarHoverRef.current = onBarHover;
+  onBarPlayRef.current = onBarPlay;
+  onWordPlayRef.current = onWordPlay;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -81,18 +88,45 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover }:
       const x = (event.clientX - bounds.left) * scaleX;
       const y = (event.clientY - bounds.top) * scaleY;
       const hit = hitTest(rectsRef.current, x, y);
+      const barNo = findBarAtY(flowmap, y);
 
       hoveredRectRef.current = hit;
-      drawHover(hoverRef.current, hit);
+      hoveredBarRef.current = barNo;
+      drawHover(hoverRef.current, hit, barNo);
       setTooltip(hit ? { x: event.clientX + 14, y: event.clientY - 12, syllable: hit.syllable } : null);
-      onBarHoverRef.current(hit ? hit.syllable.bar_no : null);
+      onBarHoverRef.current(barNo);
+      canvas.classList.toggle('flow-canvas-playable', hitPlayButton(x, y, barNo));
+    };
+
+    const handleClick = (event: MouseEvent) => {
+      const activeLayout = layoutRef.current;
+      const canvas = getPixiCanvas(app);
+      if (!activeLayout || !canvas) return;
+
+      const bounds = canvas.getBoundingClientRect();
+      const x = (event.clientX - bounds.left) * (activeLayout.width / bounds.width);
+      const y = (event.clientY - bounds.top) * (activeLayout.height / bounds.height);
+      const barNo = findBarAtY(flowmap, y);
+      if (hitPlayButton(x, y, barNo) && barNo !== null) {
+        event.preventDefault();
+        onBarPlayRef.current(barNo);
+        return;
+      }
+
+      const hit = hitTest(rectsRef.current, x, y);
+      if (hit) {
+        event.preventDefault();
+        onWordPlayRef.current(hit.syllable);
+      }
     };
 
     const handleMouseLeave = () => {
       hoveredRectRef.current = null;
-      drawHover(hoverRef.current, null);
+      hoveredBarRef.current = null;
+      drawHover(hoverRef.current, null, null);
       setTooltip(null);
       onBarHoverRef.current(null);
+      getPixiCanvas(app)?.classList.remove('flow-canvas-playable');
     };
 
     void app.init({
@@ -114,6 +148,7 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover }:
       host.replaceChildren(canvas);
       canvas.className = 'flow-canvas';
       canvas.addEventListener('mousemove', handleMouseMove);
+      canvas.addEventListener('click', handleClick);
       canvas.addEventListener('mouseleave', handleMouseLeave);
 
       const scene = new Container();
@@ -129,7 +164,7 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover }:
       setPixiReady(true);
       resizePixi(app, layoutRef.current);
       drawScene(scene);
-      drawHover(hover, hoveredRectRef.current);
+      drawHover(hover, hoveredRectRef.current, hoveredBarRef.current);
       drawPlayhead(playhead);
     }).catch((error: unknown) => {
       console.error(error);
@@ -139,6 +174,7 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover }:
       disposed = true;
       const canvas = getPixiCanvas(app);
       canvas?.removeEventListener('mousemove', handleMouseMove);
+      canvas?.removeEventListener('click', handleClick);
       canvas?.removeEventListener('mouseleave', handleMouseLeave);
       safeDestroyPixiApp(app);
       if (host.contains(canvas)) host.replaceChildren();
@@ -149,6 +185,7 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover }:
       setPixiReady(false);
       rectsRef.current = [];
       hoveredRectRef.current = null;
+      hoveredBarRef.current = null;
     };
   }, []);
 
@@ -156,7 +193,7 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover }:
     if (!pixiReady) return;
     resizePixi(appRef.current, layout);
     if (sceneRef.current) drawScene(sceneRef.current);
-    drawHover(hoverRef.current, hoveredRectRef.current);
+    drawHover(hoverRef.current, hoveredRectRef.current, hoveredBarRef.current);
     drawPlayhead(playheadRef.current);
   }, [flowmap, layout, activeRhyme, colorMap, pixiReady]);
 
@@ -244,16 +281,40 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover }:
     });
   }
 
-  function drawHover(layer: Graphics | null, rect: SyllableRect | null) {
+  function drawHover(layer: Graphics | null, rect: SyllableRect | null, barNo: number | null) {
     if (!layer) return;
     layer.clear();
-    if (!rect) return;
-    const color = rect.syllable.rhyme_group ? (colorMap.get(rect.syllable.rhyme_group) || 0xff3d00) : 0xff3d00;
-    layer.roundRect(rect.x - 5, rect.y - 5, rect.width + 10, rect.height + 10, 5)
-      .fill({ color, alpha: 0.18 })
-      .stroke({ color, width: 2, alpha: 0.95 });
-    layer.roundRect(rect.x - 2, rect.y - 2, rect.width + 4, rect.height + 4, 3)
-      .stroke({ color: 0xffffff, width: 1, alpha: 0.75 });
+    if (barNo !== null) drawBarPlayButton(layer, barNo);
+    if (rect) {
+      const color = rect.syllable.rhyme_group ? (colorMap.get(rect.syllable.rhyme_group) || 0xff3d00) : 0xff3d00;
+      layer.roundRect(rect.x - 5, rect.y - 5, rect.width + 10, rect.height + 10, 5)
+        .fill({ color, alpha: 0.18 })
+        .stroke({ color, width: 2, alpha: 0.95 });
+      layer.roundRect(rect.x - 2, rect.y - 2, rect.width + 4, rect.height + 4, 3)
+        .stroke({ color: 0xffffff, width: 1, alpha: 0.75 });
+    }
+  }
+
+  function drawBarPlayButton(layer: Graphics, barNo: number) {
+    const rowIndex = flowmap.bars.findIndex((bar) => bar.bar_no === barNo);
+    if (rowIndex < 0) return;
+    const centerX = barPlayCenterX();
+    const centerY = FLOW_DIMS.headerH + rowIndex * FLOW_DIMS.barH + FLOW_DIMS.barH / 2;
+    layer.circle(centerX, centerY, 13)
+      .fill({ color: 0xff3d00, alpha: 0.08 })
+      .stroke({ color: 0xff3d00, width: 1.2, alpha: 0.82 });
+    layer.circle(centerX, centerY, 8.5)
+      .stroke({ color: 0xffffff, width: 0.8, alpha: 0.28 });
+    layer.moveTo(centerX - 3, centerY - 5)
+      .lineTo(centerX + 4, centerY)
+      .lineTo(centerX - 3, centerY + 5)
+      .closePath()
+      .stroke({ color: 0xffffff, width: 1.4, alpha: 0.9 });
+    layer.poly([
+      centerX - 3.4, centerY - 5.4,
+      centerX - 3.4, centerY + 5.4,
+      centerX + 4.3, centerY,
+    ]).fill({ color: 0xffffff, alpha: 0.035 });
   }
 
   function drawPlayhead(playhead: Graphics | null) {
@@ -327,6 +388,15 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover }:
     }
   }
 
+  function hitPlayButton(x: number, y: number, barNo: number | null): boolean {
+    if (barNo === null) return false;
+    const rowIndex = flowmap.bars.findIndex((bar) => bar.bar_no === barNo);
+    if (rowIndex < 0) return false;
+    const centerX = barPlayCenterX();
+    const centerY = FLOW_DIMS.headerH + rowIndex * FLOW_DIMS.barH + FLOW_DIMS.barH / 2;
+    return Math.hypot(x - centerX, y - centerY) <= 15;
+  }
+
   return (
     <div ref={scrollRef} className="flow-stage-wrap">
       <div ref={hostRef} className="flow-stage" />
@@ -342,6 +412,16 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover }:
       )}
     </div>
   );
+}
+
+function barPlayCenterX(): number {
+  return FLOW_DIMS.labelW - 60;
+}
+
+function findBarAtY(flowmap: FlowMap, y: number): number | null {
+  const rowIndex = Math.floor((y - FLOW_DIMS.headerH) / FLOW_DIMS.barH);
+  if (rowIndex < 0 || rowIndex >= flowmap.bars.length) return null;
+  return flowmap.bars[rowIndex].bar_no;
 }
 
 function resizePixi(app: Application | null, layout: FlowLayout | null) {

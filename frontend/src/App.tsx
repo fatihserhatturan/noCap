@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Upload, Plus } from 'lucide-react';
+import { FileCode2, FileImage, Plus, Upload } from 'lucide-react';
 import { analyzeTrack, fetchFlowmap, hasAudio } from './api/analyze';
 import { FlowPixiStage } from './components/FlowPixiStage';
 import { MetricsPanel } from './components/MetricsPanel';
 import { PlayerBar } from './components/PlayerBar';
 import { ProgressPanel } from './components/ProgressPanel';
 import { SourcePanel } from './components/SourcePanel';
+import { downloadFlowmapPng, downloadFlowmapSvg } from './export/flowExport';
 import { sampleFlowmap } from './sampleFlowmap';
-import type { AnalyzeMessage, FlowMap, StepId, StepState } from './types';
+import type { AnalyzeMessage, FlowMap, FlowSyllable, StepId, StepState } from './types';
 
 const initialSteps: Record<StepId, StepState> = {
   load: { status: 'idle', msg: '' },
@@ -15,6 +16,12 @@ const initialSteps: Record<StepId, StepState> = {
   transcribe: { status: 'idle', msg: '' },
   align: { status: 'idle', msg: '' },
 };
+
+interface PlayRange {
+  id: number;
+  start: number;
+  end: number;
+}
 
 export function App() {
   const [flowmap, setFlowmap] = useState<FlowMap | null>(null);
@@ -29,6 +36,7 @@ export function App() {
   const [source, setSource] = useState<'mix' | 'vocals'>('mix');
   const [activeRhyme, setActiveRhyme] = useState<string | null>(null);
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
+  const [playRange, setPlayRange] = useState<PlayRange | null>(null);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('sample') === '1') {
@@ -94,7 +102,22 @@ export function App() {
     setCurrentTime(0);
     setActiveRhyme(null);
     setHoveredBar(null);
+    setPlayRange(null);
     setMode('upload');
+  }
+
+  function playBar(barNo: number) {
+    if (!flowmap) return;
+    const range = getBarTimeRange(flowmap, barNo);
+    if (!range) return;
+    setPlayRange({ id: Date.now(), start: range.start, end: range.end });
+  }
+
+  function playWord(syllable: FlowSyllable) {
+    if (!flowmap) return;
+    const range = getWordTimeRange(flowmap, syllable);
+    if (!range) return;
+    setPlayRange({ id: Date.now(), start: range.start, end: range.end });
   }
 
   return (
@@ -106,9 +129,21 @@ export function App() {
           <span className="track-meta">{meta}</span>
         </div>
         {mode === 'viewer' && (
-          <button className="ghost-btn" onClick={reset}>
-            <Plus size={15} /> New Track
-          </button>
+          <div className="top-actions">
+            {flowmap && (
+              <>
+                <button className="icon-btn" onClick={() => void downloadFlowmapPng(flowmap)} title="Export PNG" aria-label="Export PNG">
+                  <FileImage size={15} />
+                </button>
+                <button className="icon-btn" onClick={() => downloadFlowmapSvg(flowmap)} title="Export SVG" aria-label="Export SVG">
+                  <FileCode2 size={15} />
+                </button>
+              </>
+            )}
+            <button className="ghost-btn" onClick={reset}>
+              <Plus size={15} /> New Track
+            </button>
+          </div>
         )}
       </header>
 
@@ -135,6 +170,8 @@ export function App() {
                 currentTime={currentTime}
                 activeRhyme={activeRhyme}
                 onBarHover={setHoveredBar}
+                onBarPlay={playBar}
+                onWordPlay={playWord}
               />
             </section>
             <MetricsPanel
@@ -147,12 +184,65 @@ export function App() {
           <PlayerBar
             enabled={hasPlayableAudio}
             source={source}
+            playRange={playRange}
             onTimeChange={setCurrentTime}
           />
         </>
       )}
     </div>
   );
+}
+
+function getBarTimeRange(flowmap: FlowMap, barNo: number): { start: number; end: number } | null {
+  const barBeats = flowmap.beats.filter((beat) => beat.bar_no === barNo);
+  if (barBeats.length === 0) return null;
+
+  const start = barBeats[0].time;
+  const nextBarBeat = flowmap.beats.find((beat) => beat.bar_no > barNo);
+  const lastBeat = barBeats[barBeats.length - 1];
+  const beatLength = flowmap.metadata.bpm > 0 ? 60 / flowmap.metadata.bpm : 0.75;
+  const end = nextBarBeat?.time ?? Math.min(flowmap.metadata.duration || lastBeat.time + beatLength, lastBeat.time + beatLength);
+  return end > start ? { start, end } : null;
+}
+
+function getWordTimeRange(flowmap: FlowMap, target: FlowSyllable): { start: number; end: number } | null {
+  if (target.time < 0) return null;
+  const index = flowmap.syllables.findIndex((syllable) => (
+    syllable.word === target.word
+    && syllable.bar_no === target.bar_no
+    && syllable.beat_no === target.beat_no
+    && syllable.syllable_index === target.syllable_index
+    && Math.abs(syllable.time - target.time) < 0.001
+  ));
+  if (index < 0) return null;
+
+  let first = index;
+  while (
+    first > 0
+    && flowmap.syllables[first - 1].word === target.word
+    && flowmap.syllables[first - 1].bar_no === target.bar_no
+  ) {
+    first -= 1;
+  }
+
+  let last = index;
+  while (
+    last + 1 < flowmap.syllables.length
+    && flowmap.syllables[last + 1].word === target.word
+    && flowmap.syllables[last + 1].bar_no === target.bar_no
+  ) {
+    last += 1;
+  }
+
+  const beatLength = flowmap.metadata.bpm > 0 ? 60 / flowmap.metadata.bpm : 0.75;
+  const start = Math.max(0, flowmap.syllables[first].time - 0.04);
+  const next = flowmap.syllables[last + 1];
+  const estimatedEnd = flowmap.syllables[last].time + Math.min(0.65, beatLength * 0.8);
+  const end = Math.min(
+    flowmap.metadata.duration || estimatedEnd,
+    Math.max(start + 0.28, next?.time ? next.time - 0.03 : estimatedEnd),
+  );
+  return end > start ? { start, end } : null;
 }
 
 function UploadPanel({

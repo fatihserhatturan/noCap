@@ -66,6 +66,19 @@ button, select { font: inherit; }
   cursor: pointer;
 }
 .ghost-btn:hover { border-color: var(--accent); color: var(--accent); }
+.top-actions { display: flex; align-items: center; gap: 8px; }
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 .upload-screen {
   flex: 1;
@@ -222,19 +235,67 @@ h3 {
   flex: 1;
   min-width: 0;
   overflow: auto;
-  padding: 24px 32px;
+  padding: 24px 18px;
   display: flex;
   justify-content: center;
   align-items: flex-start;
 }
 .flow-stage { min-width: 360px; width: 100%; }
 .flow-canvas { display: block; cursor: crosshair; }
+.flow-canvas.flow-canvas-playable { cursor: pointer; }
 
 .metrics-list { display: flex; flex-direction: column; gap: 9px; }
 .m-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 3px; color: var(--muted); font-size: 10px; }
 .m-row b { color: #dddddd; font-size: 11px; }
 .m-bar { height: 2px; background: var(--border); border-radius: 1px; overflow: hidden; }
 .m-bar div { height: 100%; background: var(--accent); }
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+  margin-bottom: 9px;
+}
+.segmented button {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg3);
+  color: var(--muted);
+  padding: 5px 3px;
+  font-size: 9px;
+  cursor: pointer;
+}
+.segmented button.seg-active {
+  border-color: rgba(255, 61, 0, 0.55);
+  background: rgba(255, 61, 0, 0.09);
+  color: #eeeeee;
+}
+.compare-list { display: flex; flex-direction: column; gap: 5px; }
+.compare-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 34px;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.compare-row b { color: #dddddd; font-size: 10px; text-align: right; }
+.compare-label { white-space: nowrap; }
+.compare-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+.compare-track div {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+}
+.compare-row.compare-active .compare-label,
+.compare-row.compare-active b { color: #ffffff; }
+.compare-row.compare-active .compare-track div { background: #ffffff; }
 
 .rhyme-list { display: flex; flex-direction: column; gap: 3px; }
 .rh-item {
