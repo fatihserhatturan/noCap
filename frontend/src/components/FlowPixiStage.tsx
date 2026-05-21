@@ -406,8 +406,10 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover, o
           <div className="tt-row">Beat <span>{tooltip.syllable.beat_no} + {tooltip.syllable.beat_pos.toFixed(2)}</span></div>
           <div className="tt-row">Bar <span>{tooltip.syllable.bar_no}</span></div>
           <div className="tt-row">Stress <span>{tooltip.syllable.stress ? 'stressed' : 'unstressed'}</span></div>
+          <div className="tt-row">Grid <span>{tooltip.syllable.subdivision} · {tooltip.syllable.is_on_beat ? 'on beat' : 'off beat'}</span></div>
+          <div className="tt-row">Timing <span>{(tooltip.syllable.timing_quality * 100).toFixed(0)}%</span></div>
           {tooltip.syllable.rhyme_group && <div className="tt-row">Rhyme <span>Group {tooltip.syllable.rhyme_group}</span></div>}
-          {tooltip.syllable.time >= 0 && <div className="tt-row">Time <span>{tooltip.syllable.time.toFixed(2)}s</span></div>}
+          {tooltip.syllable.center_time >= 0 && <div className="tt-row">Time <span>{tooltip.syllable.center_time.toFixed(2)}s</span></div>}
         </div>
       )}
     </div>
@@ -452,8 +454,9 @@ function findActiveSyllable(flowmap: FlowMap, time: number): FlowSyllable | null
   let best: FlowSyllable | null = null;
   let bestDiff = Number.POSITIVE_INFINITY;
   for (const syllable of flowmap.syllables) {
-    if (syllable.time < 0) continue;
-    const diff = Math.abs(syllable.time - time);
+    const center = syllable.center_time ?? syllable.time;
+    if (center < 0) continue;
+    const diff = Math.abs(center - time);
     if (diff < bestDiff) {
       best = syllable;
       bestDiff = diff;

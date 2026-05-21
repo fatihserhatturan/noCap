@@ -15,6 +15,10 @@ class BarMetrics:
     density: float          # syllables per beat
     syncopation: float      # 0.0–1.0, fraction of syllables landing off-beat
     stressed_ratio: float   # fraction of syllables that are stressed
+    syncopation_score: float = 0.0
+    pocket_offset: float = 0.0
+    timing_variance: float = 0.0
+    stressed_on_beat_ratio: float = 0.0
 
 
 @dataclass
@@ -24,6 +28,10 @@ class FlowSummary:
     syncopation_score: float    # song-wide average
     consistency: float          # 1 - normalised std of bar densities (higher = more consistent)
     rhyme_chain_avg: float      # average rhyme-chain length
+    pocket_score: float = 0.0
+    timing_quality_avg: float = 0.0
+    density_variation: float = 0.0
+    delivery_consistency: float = 0.0
 
 
 def compute_bar_metrics(syllables: list[AlignedSyllable], grid: BeatGrid) -> list[BarMetrics]:
@@ -44,12 +52,17 @@ def compute_bar_metrics(syllables: list[AlignedSyllable], grid: BeatGrid) -> lis
         n_beats = beats_per_bar.get(bar_no, grid.time_signature)
         density = len(syls) / n_beats if n_beats else 0.0
 
-        # off-beat = beat_pos > 0.15 (not landing right on a beat)
-        off_beat = sum(1 for s in syls if s.beat_pos > 0.15)
-        syncopation = off_beat / len(syls) if syls else 0.0
+        sync_scores = [_syncopation_score(s) for s in syls]
+        syncopation = sum(sync_scores) / len(sync_scores) if sync_scores else 0.0
 
         stressed = sum(1 for s in syls if s.stress)
         stressed_ratio = stressed / len(syls) if syls else 0.0
+        stressed_on_beat = sum(1 for s in syls if s.stress and s.is_on_beat)
+        stressed_on_beat_ratio = stressed_on_beat / stressed if stressed else 0.0
+
+        offsets = [_signed_beat_offset(s.beat_pos) for s in syls]
+        pocket_offset = sum(offsets) / len(offsets) if offsets else 0.0
+        timing_variance = _variance(offsets)
 
         metrics.append(BarMetrics(
             bar_no=bar_no,
@@ -57,6 +70,10 @@ def compute_bar_metrics(syllables: list[AlignedSyllable], grid: BeatGrid) -> lis
             density=round(density, 3),
             syncopation=round(syncopation, 3),
             stressed_ratio=round(stressed_ratio, 3),
+            syncopation_score=round(syncopation, 3),
+            pocket_offset=round(pocket_offset, 3),
+            timing_variance=round(timing_variance, 3),
+            stressed_on_beat_ratio=round(stressed_on_beat_ratio, 3),
         ))
     return metrics
 
@@ -83,6 +100,10 @@ def compute_summary(
         consistency = 0.0
 
     rhyme_chain_avg = _avg_rhyme_chain(syllables)
+    pocket_score = _pocket_score(bar_metrics)
+    timing_quality_avg = _timing_quality_avg(syllables)
+    density_variation = _variance(densities)
+    delivery_consistency = _delivery_consistency(consistency, pocket_score, timing_quality_avg)
 
     return FlowSummary(
         avg_density=round(avg_density, 3),
@@ -90,6 +111,10 @@ def compute_summary(
         syncopation_score=round(syncopation_score, 3),
         consistency=round(consistency, 3),
         rhyme_chain_avg=round(rhyme_chain_avg, 3),
+        pocket_score=round(pocket_score, 3),
+        timing_quality_avg=round(timing_quality_avg, 3),
+        density_variation=round(density_variation, 3),
+        delivery_consistency=round(delivery_consistency, 3),
     )
 
 
@@ -113,3 +138,57 @@ def _avg_rhyme_chain(syllables: list[AlignedSyllable]) -> float:
         chains.append(run)
 
     return sum(chains) / len(chains) if chains else 0.0
+
+
+def _syncopation_score(syllable: AlignedSyllable) -> float:
+    if syllable.is_on_beat:
+        return 0.0
+    pos = syllable.beat_pos
+    beat_distance = min(pos, abs(1.0 - pos))
+    if _near(pos, 0.5):
+        return 1.0
+    if _near(pos, 0.25) or _near(pos, 0.75):
+        return 0.72
+    if _near_grid(pos, 8) and not _near_grid(pos, 4):
+        return 0.55
+    if _near_grid(pos, 16) and not _near_grid(pos, 8):
+        return 0.42
+    return max(0.0, min(1.0, beat_distance / 0.5))
+
+
+def _signed_beat_offset(beat_pos: float) -> float:
+    return beat_pos if beat_pos <= 0.5 else beat_pos - 1.0
+
+
+def _variance(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    avg = sum(values) / len(values)
+    return sum((value - avg) ** 2 for value in values) / len(values)
+
+
+def _pocket_score(bar_metrics: list[BarMetrics]) -> float:
+    if not bar_metrics:
+        return 0.0
+    avg_variance = sum(b.timing_variance for b in bar_metrics) / len(bar_metrics)
+    return max(0.0, min(1.0, 1.0 - avg_variance * 8.0))
+
+
+def _timing_quality_avg(syllables: list[AlignedSyllable]) -> float:
+    if not syllables:
+        return 0.0
+    return sum(getattr(s, "timing_quality", 1.0) for s in syllables) / len(syllables)
+
+
+def _delivery_consistency(consistency: float, pocket_score: float, timing_quality_avg: float) -> float:
+    return max(0.0, min(1.0, consistency * 0.5 + pocket_score * 0.3 + timing_quality_avg * 0.2))
+
+
+def _near(value: float, target: float, tolerance: float = 0.035) -> bool:
+    return abs(value - target) <= tolerance
+
+
+def _near_grid(value: float, denominator: int, tolerance: float = 0.035) -> bool:
+    step = 1.0 / denominator
+    nearest = round(value / step) * step
+    return abs(value - nearest) <= tolerance

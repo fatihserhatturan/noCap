@@ -31,6 +31,10 @@ def cli() -> None:
               help="Language hint for Whisper (e.g. 'en', 'tr')")
 @click.option("--separate", is_flag=True, default=False,
               help="Isolate vocals with Demucs before transcribing (requires nocap[separator])")
+@click.option("--bar-offset", type=int, default=0, show_default=True,
+              help="Shift exported bar numbers by this many bars.")
+@click.option("--downbeat-offset", type=int, default=0, show_default=True,
+              help="Manually rotate beat numbering by this many beats.")
 def analyze(
     audio: Path | None,
     lyrics: Path | None,
@@ -41,6 +45,8 @@ def analyze(
     whisper_model: str,
     language: str | None,
     separate: bool,
+    bar_offset: int,
+    downbeat_offset: int,
 ) -> None:
     """Analyze a track and generate its flow map.
 
@@ -83,6 +89,7 @@ def analyze(
 
     resolved_title = title or (audio.stem if audio else lyrics.stem if lyrics else "untitled")
     audio_path_str = str(audio.resolve()) if audio else None
+    flowmap_duration: float | None = audio_data.duration if audio_data is not None else None
 
     # ── 2. Beat grid ─────────────────────────────────────────────────────────
     if audio_data is not None:
@@ -104,7 +111,17 @@ def analyze(
         _temp_lines = _parse(lyrics)
         max_ts  = max((l.start for l in _temp_lines if l.start >= 0), default=-1)
         duration = max_ts + 30.0 if max_ts >= 0 else len(_temp_lines) * 3.0
+        flowmap_duration = duration
         grid = build_from_bpm(bpm, duration)
+
+    if downbeat_offset:
+        from nocap.audio.beat_tracker import apply_downbeat_offset
+        click.echo(f"  Applying manual downbeat offset: {downbeat_offset} beat(s)")
+        grid = apply_downbeat_offset(grid, downbeat_offset)
+    if bar_offset:
+        from nocap.audio.beat_tracker import apply_bar_offset
+        click.echo(f"  Applying manual bar offset: {bar_offset} bar(s)")
+        grid = apply_bar_offset(grid, bar_offset)
 
     # ── 3. Lyrics / transcription ─────────────────────────────────────────────
     transcript_words = None   # word-level timestamps from Whisper (optional)
@@ -118,7 +135,7 @@ def analyze(
     elif audio_data is not None:
         # auto-transcribe with Whisper
         click.echo(f"  Transcribing with Whisper ({whisper_model})…")
-        from nocap.audio.transcriber import transcribe, words_to_timed_lines
+        from nocap.audio.transcriber import require_word_timestamps, transcribe, words_to_timed_lines
         try:
             tr = transcribe(
                 transcription_audio or audio_data,
@@ -132,13 +149,13 @@ def analyze(
 
         click.echo(f"  Detected language: {tr.language}")
 
-        if tr.has_word_timestamps:
-            click.echo(f"  {len(tr.words)} words with word-level timestamps.")
-            transcript_words = tr.words
-            lines = words_to_timed_lines(tr.words)
-        else:
-            click.echo(f"  {len(tr.timed_lines)} segments (no word timestamps).")
-            lines = tr.timed_lines
+        try:
+            require_word_timestamps(tr)
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
+        click.echo(f"  {len(tr.words)} words with word-level timestamps.")
+        transcript_words = tr.words
+        lines = words_to_timed_lines(tr.words)
 
     else:
         lines = []
@@ -200,6 +217,10 @@ def analyze(
         bar_metrics=bar_metrics,
         summary=summary,
         audio_path=audio_path_str,
+        duration=flowmap_duration,
+        transcript_words=transcript_words,
+        word_analyses=all_words,
+        analysis_mode="audio_whisper_word" if transcript_words is not None else "lyrics",
     )
 
     out_path = (output or Path(f"{resolved_title.replace(' ', '_')}_flowmap.json")).resolve()

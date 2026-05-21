@@ -1,4 +1,5 @@
 import type { FlowMap } from './types';
+import { normalizeFlowMap } from './flow/normalize';
 
 export function sampleFlowmap(): FlowMap {
   const bpm = 92;
@@ -35,7 +36,7 @@ export function sampleFlowmap(): FlowMap {
       stressed_ratio: 0.55,
     };
   });
-  return {
+  return normalizeFlowMap({
     metadata: {
       title: 'Sample Flow',
       bpm,
@@ -81,5 +82,5 @@ export function sampleFlowmap(): FlowMap {
       consistency: 0.82,
       rhyme_chain_avg: 3.2,
     },
-  };
+  });
 }

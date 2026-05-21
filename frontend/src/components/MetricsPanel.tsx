@@ -2,13 +2,15 @@ import { useMemo, useState } from 'react';
 import type { FlowMap } from '../types';
 import { buildColorMap, colorToCss } from '../flow/colors';
 
-type CompareMetric = 'density' | 'syncopation' | 'stressed_ratio' | 'syllable_count';
+type CompareMetric = 'density' | 'syncopation_score' | 'stressed_ratio' | 'syllable_count' | 'pocket_offset' | 'timing_variance';
 
 const compareOptions: Array<{ key: CompareMetric; label: string }> = [
   { key: 'density', label: 'Density' },
-  { key: 'syncopation', label: 'Sync' },
+  { key: 'syncopation_score', label: 'Sync' },
   { key: 'stressed_ratio', label: 'Stress' },
   { key: 'syllable_count', label: 'Count' },
+  { key: 'pocket_offset', label: 'Pocket' },
+  { key: 'timing_variance', label: 'Timing' },
 ];
 
 export function MetricsPanel({
@@ -41,6 +43,9 @@ export function MetricsPanel({
     { label: 'Syncopation', value: `${(flowmap.summary.syncopation_score * 100).toFixed(0)}%`, pct: flowmap.summary.syncopation_score },
     { label: 'Consistency', value: `${(flowmap.summary.consistency * 100).toFixed(0)}%`, pct: flowmap.summary.consistency },
     { label: 'Rhyme Chain', value: `${flowmap.summary.rhyme_chain_avg.toFixed(1)} avg`, pct: flowmap.summary.rhyme_chain_avg / 6 },
+    { label: 'Pocket', value: `${(flowmap.summary.pocket_score * 100).toFixed(0)}%`, pct: flowmap.summary.pocket_score },
+    { label: 'Timing Quality', value: `${(flowmap.summary.timing_quality_avg * 100).toFixed(0)}%`, pct: flowmap.summary.timing_quality_avg },
+    { label: 'Delivery', value: `${(flowmap.summary.delivery_consistency * 100).toFixed(0)}%`, pct: flowmap.summary.delivery_consistency },
   ];
 
   return (
@@ -89,10 +94,20 @@ export function MetricsPanel({
       <section>
         <h3>Rhyme Groups</h3>
         <div className="rhyme-list">
-          {flowmap.rhyme_chains.length === 0 && <span className="empty">No rhymes detected</span>}
-          {flowmap.rhyme_chains.map((chain) => {
+          {flowmap.rhyme_chains.length === 0 && flowmap.rhyme_groups.length === 0 && <span className="empty">No rhymes detected</span>}
+          {(flowmap.rhyme_groups.length ? flowmap.rhyme_groups.map((group) => ({
+            group: group.id,
+            count: group.occurrences.length,
+            words: group.occurrences.map((item) => item.word),
+            meta: `${group.placement || 'end'} · ${group.type} · ${(group.strength * 100).toFixed(0)}%`,
+          })) : flowmap.rhyme_chains.map((chain) => ({
+            group: chain.group,
+            count: chain.count,
+            words: chain.occurrences.map((item) => item.word),
+            meta: `${chain.count}x`,
+          }))).map((chain) => {
             const color = colorToCss(colors.get(chain.group) || 0x333333);
-            const words = [...new Set(chain.occurrences.map((item) => item.word.toLowerCase()))].slice(0, 6).join(' · ');
+            const words = [...new Set(chain.words.map((word) => word.toLowerCase()))].slice(0, 6).join(' · ');
             return (
               <button
                 key={chain.group}
@@ -103,7 +118,7 @@ export function MetricsPanel({
                 <span className="rh-body">
                   <span className="rh-top">
                     <b>{chain.group}</b>
-                    <small>{chain.count}x</small>
+                    <small>{chain.meta}</small>
                   </span>
                   <span className="rh-words" style={{ color }}>{words}</span>
                 </span>
@@ -119,7 +134,9 @@ export function MetricsPanel({
             <>
               Bar {bar.bar_no}<br />
               Density: {bar.density} syl/beat<br />
-              Syncopation: {(bar.syncopation * 100).toFixed(0)}%<br />
+              Syncopation: {(bar.syncopation_score * 100).toFixed(0)}%<br />
+              Timing: {(bar.timing_variance * 100).toFixed(1)}<br />
+              Pocket: {bar.pocket_offset.toFixed(3)}<br />
               Stressed: {(bar.stressed_ratio * 100).toFixed(0)}%<br />
               Syllables: {bar.syllable_count}
             </>
@@ -131,8 +148,10 @@ export function MetricsPanel({
 }
 
 function formatCompareValue(value: number, metric: CompareMetric): string {
-  if (metric === 'syncopation' || metric === 'stressed_ratio') {
+  if (metric === 'syncopation_score' || metric === 'stressed_ratio') {
     return `${(value * 100).toFixed(0)}%`;
   }
+  if (metric === 'pocket_offset') return value.toFixed(3);
+  if (metric === 'timing_variance') return (value * 100).toFixed(1);
   return value.toFixed(metric === 'syllable_count' ? 0 : 1);
 }

@@ -159,11 +159,12 @@ def start(
 
                     yield _sse("progress", step="transcribe",
                                msg=f"Loading Whisper {model_name}…")
-                    from nocap.audio.transcriber import transcribe, words_to_timed_lines
+                    from nocap.audio.transcriber import require_word_timestamps, transcribe, words_to_timed_lines
                     tr = transcribe(
                         transcription_audio,
                         model_name=model_name,
                     )
+                    require_word_timestamps(tr)
                     yield _sse("progress", step="transcribe",
                                msg=f"Language: {tr.language} · {len(tr.words)} words",
                                done=True)
@@ -210,6 +211,10 @@ def start(
                         bar_metrics=bar_metrics,
                         summary=summary,
                         audio_path=str(tmp_path),
+                        duration=audio_data.duration,
+                        transcript_words=tr.words,
+                        word_analyses=all_words,
+                        analysis_mode="audio_whisper_word",
                     )
 
                     yield _sse("progress", step="align",

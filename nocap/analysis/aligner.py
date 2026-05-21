@@ -23,6 +23,14 @@ class AlignedSyllable:
     global_beat_idx: int    # index into BeatGrid.beats
     stress: bool
     rhyme_group: str        # "" if no rhyme
+    word_id: int = -1
+    start: float = -1.0
+    end: float = -1.0
+    center_time: float = -1.0
+    subdivision: str = "1/4"
+    is_on_beat: bool = False
+    timing_quality: float = 1.0
+    beat_distance: float = 0.0
 
 
 def align(
@@ -185,14 +193,16 @@ def align_words(
         if wa.syllable_count == 0:
             continue
 
-        word_dur = max(tw.end - tw.start, 0.01)
-        step     = word_dur / wa.syllable_count
+        word_start, word_end, timing_quality = _safe_word_window(tw.start, tw.end, wa.syllable_count)
+        windows = _weighted_syllable_windows(word_start, word_end, wa)
 
-        for si in range(wa.syllable_count):
-            syl_t   = tw.start + si * step
+        for si, (syl_start, syl_end) in enumerate(windows):
+            syl_t = (syl_start + syl_end) / 2
             bi, pos = _beat_position(syl_t, beat_times)
             beat    = grid.beats[bi]
             stressed = si < len(wa.stress_pattern) and wa.stress_pattern[si] in (1, 2)
+            subdivision, _ = _nearest_subdivision(pos)
+            beat_distance = min(pos, abs(1.0 - pos))
             result.append(AlignedSyllable(
                 word=wa.word,
                 syllable_index=si,
@@ -203,6 +213,14 @@ def align_words(
                 global_beat_idx=bi,
                 stress=stressed,
                 rhyme_group=label,
+                word_id=wi,
+                start=round(syl_start, 4),
+                end=round(syl_end, 4),
+                center_time=round(syl_t, 4),
+                subdivision=subdivision,
+                is_on_beat=beat_distance <= 0.08,
+                timing_quality=timing_quality,
+                beat_distance=round(beat_distance, 4),
             ))
 
     return result
@@ -232,3 +250,51 @@ def _beat_position(t: float, beat_times: list[float]) -> tuple[int, float]:
 
     pos = (t - beat_start) / beat_len if beat_len > 0 else 0.0
     return idx, max(0.0, min(pos, 1.0))
+
+
+def _safe_word_window(start: float, end: float, syllable_count: int) -> tuple[float, float, float]:
+    """Clamp broken Whisper word windows while keeping a quality signal."""
+    min_duration = max(0.06, syllable_count * 0.035)
+    if end <= start:
+        return start, start + min_duration, 0.2
+    duration = end - start
+    if duration < min_duration:
+        midpoint = (start + end) / 2
+        half = min_duration / 2
+        return max(0.0, midpoint - half), midpoint + half, max(0.35, duration / min_duration)
+    if duration > max(1.2, syllable_count * 0.45):
+        return start, end, 0.65
+    return start, end, 1.0
+
+
+def _weighted_syllable_windows(start: float, end: float, wa: WordAnalysis) -> list[tuple[float, float]]:
+    """Split a word into syllable windows with a slight stress-aware bias."""
+    count = max(1, wa.syllable_count)
+    if count == 1:
+        return [(start, end)]
+
+    weights: list[float] = []
+    for idx in range(count):
+        stress = wa.stress_pattern[idx] if idx < len(wa.stress_pattern) else 0
+        weights.append(1.18 if stress in (1, 2) else 0.92)
+
+    total = sum(weights) or float(count)
+    cursor = start
+    duration = end - start
+    windows: list[tuple[float, float]] = []
+    for idx, weight in enumerate(weights):
+        next_cursor = end if idx == count - 1 else cursor + duration * (weight / total)
+        windows.append((cursor, next_cursor))
+        cursor = next_cursor
+    return windows
+
+
+def _nearest_subdivision(beat_pos: float) -> tuple[str, float]:
+    """Return the closest musically useful subdivision and distance within a beat."""
+    candidates: list[tuple[str, float]] = []
+    for denom in (4, 8, 16):
+        step = 1.0 / denom
+        nearest = round(beat_pos / step) * step
+        distance = abs(beat_pos - nearest)
+        candidates.append((f"1/{denom}", distance))
+    return min(candidates, key=lambda item: item[1])

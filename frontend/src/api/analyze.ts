@@ -1,9 +1,10 @@
 import type { AnalyzeMessage, FlowMap } from '../types';
+import { normalizeFlowMap } from '../flow/normalize';
 
 export async function fetchFlowmap(): Promise<FlowMap | null> {
   const res = await fetch('/api/flowmap.json');
   if (!res.ok) return null;
-  return res.json() as Promise<FlowMap>;
+  return normalizeFlowMap(await res.json()) as FlowMap;
 }
 
 export async function hasAudio(): Promise<boolean> {
@@ -43,7 +44,12 @@ export async function analyzeTrack(
     for (const part of parts) {
       const line = part.trim();
       if (!line.startsWith('data: ')) continue;
-      onMessage(JSON.parse(line.slice(6)) as AnalyzeMessage);
+      const message = JSON.parse(line.slice(6)) as AnalyzeMessage;
+      if (message.type === 'complete') {
+        onMessage({ ...message, flowmap: normalizeFlowMap(message.flowmap) });
+      } else {
+        onMessage(message);
+      }
     }
   }
 }

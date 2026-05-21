@@ -239,13 +239,13 @@ function getBarTimeRange(flowmap: FlowMap, barNo: number): { start: number; end:
 }
 
 function getWordTimeRange(flowmap: FlowMap, target: FlowSyllable): { start: number; end: number } | null {
-  if (target.time < 0) return null;
+  if (target.center_time < 0) return null;
   const index = flowmap.syllables.findIndex((syllable) => (
     syllable.word === target.word
     && syllable.bar_no === target.bar_no
     && syllable.beat_no === target.beat_no
     && syllable.syllable_index === target.syllable_index
-    && Math.abs(syllable.time - target.time) < 0.001
+    && Math.abs(syllable.center_time - target.center_time) < 0.001
   ));
   if (index < 0) return null;
 
@@ -268,12 +268,12 @@ function getWordTimeRange(flowmap: FlowMap, target: FlowSyllable): { start: numb
   }
 
   const beatLength = flowmap.metadata.bpm > 0 ? 60 / flowmap.metadata.bpm : 0.75;
-  const start = Math.max(0, flowmap.syllables[first].time - 0.04);
+  const start = Math.max(0, flowmap.syllables[first].start - 0.04);
   const next = flowmap.syllables[last + 1];
-  const estimatedEnd = flowmap.syllables[last].time + Math.min(0.65, beatLength * 0.8);
+  const estimatedEnd = flowmap.syllables[last].end + Math.min(0.2, beatLength * 0.25);
   const end = Math.min(
     flowmap.metadata.duration || estimatedEnd,
-    Math.max(start + 0.28, next?.time ? next.time - 0.03 : estimatedEnd),
+    Math.max(start + 0.28, next?.start ? next.start - 0.03 : estimatedEnd),
   );
   return end > start ? { start, end } : null;
 }

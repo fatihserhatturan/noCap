@@ -28,6 +28,11 @@ class TranscriptResult:
         return len(self.words) > 0
 
 
+def require_word_timestamps(result: TranscriptResult) -> None:
+    if not result.has_word_timestamps:
+        raise ValueError("word-level timestamps required for v2 timing")
+
+
 HIP_HOP_PROMPT = None  # prompt causes hallucination on vocal stems; omit
 
 
