@@ -111,9 +111,22 @@ export interface FlowMap {
   };
 }
 
+export interface LibraryTrack {
+  id: string;
+  title: string;
+  created_at: string;
+  bpm: number;
+  duration: number;
+  bars: number;
+  syllables: number;
+  has_audio: boolean;
+  has_vocals: boolean;
+  summary: FlowMap['summary'];
+}
+
 export type AnalyzeMessage =
   | { type: 'progress'; step: StepId; msg?: string; done?: boolean }
-  | { type: 'complete'; flowmap: FlowMap; has_vocals: boolean }
+  | { type: 'complete'; flowmap: FlowMap; track?: LibraryTrack; has_vocals: boolean }
   | { type: 'error'; msg: string; trace?: string };
 
 export interface StepState {

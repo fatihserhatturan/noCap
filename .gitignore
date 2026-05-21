@@ -51,6 +51,7 @@ htmlcov/
 # noCap outputs
 *_flowmap.json
 /tmp/
+.nocap_library/
 
 # Whisper model cache (large files)
 ~/.cache/whisper/

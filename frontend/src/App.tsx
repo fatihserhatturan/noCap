@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
-import { ChevronDown, Download, FileCode2, FileImage, Plus, Upload } from 'lucide-react';
-import { analyzeTrack, fetchFlowmap, hasAudio } from './api/analyze';
+import { BarChart3, ChevronDown, Download, FileCode2, FileImage, Library, Plus, Route, Trash2, Upload } from 'lucide-react';
+import { analyzeTrack, deleteLibraryTrack, fetchLibrary, openLibraryTrack } from './api/analyze';
+import { DetailsScreen } from './components/DetailsScreen';
 import { FlowPixiStage } from './components/FlowPixiStage';
 import { MetricsPanel } from './components/MetricsPanel';
 import { PlayerBar } from './components/PlayerBar';
@@ -9,7 +10,7 @@ import { ProgressPanel } from './components/ProgressPanel';
 import { SourcePanel } from './components/SourcePanel';
 import { downloadFlowmapPng, downloadFlowmapSvg } from './export/flowExport';
 import { sampleFlowmap } from './sampleFlowmap';
-import type { AnalyzeMessage, FlowMap, FlowSyllable, StepId, StepState } from './types';
+import type { AnalyzeMessage, FlowMap, FlowSyllable, LibraryTrack, StepId, StepState } from './types';
 import logoUrl from '../../source/logo-transparent.png';
 
 const initialSteps: Record<StepId, StepState> = {
@@ -27,18 +28,20 @@ interface PlayRange {
 
 export function App() {
   const [flowmap, setFlowmap] = useState<FlowMap | null>(null);
+  const [library, setLibrary] = useState<LibraryTrack[]>([]);
   const [hasVocals, setHasVocals] = useState(false);
   const [hasPlayableAudio, setHasPlayableAudio] = useState(false);
   const [steps, setSteps] = useState(initialSteps);
-  const [mode, setMode] = useState<'upload' | 'progress' | 'viewer'>('upload');
+  const [mode, setMode] = useState<'library' | 'viewer' | 'details'>('library');
   const [error, setError] = useState('');
   const [filename, setFilename] = useState('');
-  const [model, setModel] = useState('small');
+  const [analysisStatus, setAnalysisStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [currentTime, setCurrentTime] = useState(0);
   const [source, setSource] = useState<'mix' | 'vocals'>('mix');
   const [activeRhyme, setActiveRhyme] = useState<string | null>(null);
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
   const [playRange, setPlayRange] = useState<PlayRange | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<LibraryTrack | null>(null);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('sample') === '1') {
@@ -46,12 +49,7 @@ export function App() {
       setMode('viewer');
       return;
     }
-    void fetchFlowmap().then(async (data) => {
-      if (!data) return;
-      setFlowmap(data);
-      setHasPlayableAudio(await hasAudio());
-      setMode('viewer');
-    });
+    void refreshLibrary();
   }, []);
 
   const title = flowmap?.metadata.title || '';
@@ -64,12 +62,47 @@ export function App() {
     setFilename(file.name);
     setError('');
     setSteps(initialSteps);
-    setMode('progress');
+    setAnalysisStatus('running');
+    setMode('library');
     try {
-      await analyzeTrack(file, model, handleAnalyzeMessage);
+      await analyzeTrack(file, 'medium', handleAnalyzeMessage);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-      setMode('upload');
+      setAnalysisStatus('error');
+    }
+  }
+
+  async function refreshLibrary() {
+    setLibrary(await fetchLibrary());
+  }
+
+  async function openTrack(trackId: string) {
+    setError('');
+    try {
+      const result = await openLibraryTrack(trackId);
+      setFlowmap(result.flowmap);
+      setHasVocals(result.has_vocals);
+      setHasPlayableAudio(result.has_audio);
+      setSource('mix');
+      setCurrentTime(0);
+      setActiveRhyme(null);
+      setHoveredBar(null);
+      setPlayRange(null);
+      setMode('viewer');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function confirmDeleteTrack() {
+    if (!deleteCandidate) return;
+    setError('');
+    try {
+      await deleteLibraryTrack(deleteCandidate.id);
+      setLibrary((current) => current.filter((item) => item.id !== deleteCandidate.id));
+      setDeleteCandidate(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -89,11 +122,12 @@ export function App() {
       setHasVocals(message.has_vocals);
       setHasPlayableAudio(true);
       setSource('mix');
-      setMode('viewer');
+      void refreshLibrary();
+      setAnalysisStatus('done');
       return;
     }
     setError(message.msg + (message.trace ? `\n\n${message.trace}` : ''));
-    setMode('upload');
+    setAnalysisStatus('error');
   }
 
   function reset() {
@@ -105,7 +139,14 @@ export function App() {
     setActiveRhyme(null);
     setHoveredBar(null);
     setPlayRange(null);
-    setMode('upload');
+    setAnalysisStatus('idle');
+    void refreshLibrary();
+    setMode('library');
+  }
+
+  function closeAnalysisPopup() {
+    setError('');
+    setAnalysisStatus('idle');
   }
 
   function playBar(barNo: number) {
@@ -132,33 +173,54 @@ export function App() {
           <span className="track-title">{title}</span>
           <span className="track-meta">{meta}</span>
         </div>
-        {mode === 'viewer' && (
+        {(mode === 'viewer' || mode === 'details') && flowmap && (
           <div className="top-actions">
-            {flowmap && <ExportMenu flowmap={flowmap} />}
+            <button className={`ghost-btn nav-view-btn ${mode === 'viewer' ? 'nav-view-active' : ''}`} onClick={() => setMode('viewer')}>
+              <Route size={15} /> Flow
+            </button>
+            <button className={`ghost-btn nav-view-btn ${mode === 'details' ? 'nav-view-active' : ''}`} onClick={() => setMode('details')}>
+              <BarChart3 size={15} /> Details
+            </button>
             <button className="ghost-btn" onClick={reset}>
-              <Plus size={15} /> New Track
+              <Library size={15} /> Library
             </button>
           </div>
         )}
       </header>
 
-      {mode === 'upload' && (
-        <main className="upload-screen">
-          <UploadPanel onAnalyze={start} model={model} onModelChange={setModel} />
-          {error && <pre className="error-panel">{error}</pre>}
-        </main>
-      )}
-
-      {mode === 'progress' && (
-        <main className="upload-screen">
-          <ProgressPanel filename={filename} steps={steps} error={error} />
+      {mode === 'library' && (
+        <main className="library-screen">
+          <LibraryPanel tracks={library} onOpenTrack={openTrack} onDeleteTrack={setDeleteCandidate} onNewTrack={start} />
+          {error && analysisStatus === 'idle' && <pre className="error-panel">{error}</pre>}
+          {deleteCandidate && (
+            <DeleteTrackModal
+              track={deleteCandidate}
+              onCancel={() => setDeleteCandidate(null)}
+              onConfirm={confirmDeleteTrack}
+            />
+          )}
+          {analysisStatus !== 'idle' && (
+            <AnalysisPopup
+              filename={filename}
+              steps={steps}
+              error={error}
+              status={analysisStatus}
+              onClose={closeAnalysisPopup}
+            />
+          )}
         </main>
       )}
 
       {mode === 'viewer' && flowmap && (
         <>
           <main className="viewer-layout">
-            <SourcePanel source={source} onSourceChange={setSource} hasVocals={hasVocals} />
+            <SourcePanel
+              source={source}
+              onSourceChange={setSource}
+              hasVocals={hasVocals}
+              flowmap={flowmap}
+              hoveredBar={hoveredBar}
+            />
             <section className="canvas-area">
               <FlowPixiStage
                 flowmap={flowmap}
@@ -173,7 +235,6 @@ export function App() {
               flowmap={flowmap}
               activeRhyme={activeRhyme}
               onActiveRhymeChange={setActiveRhyme}
-              hoveredBar={hoveredBar}
             />
           </main>
           <PlayerBar
@@ -184,6 +245,8 @@ export function App() {
           />
         </>
       )}
+
+      {mode === 'details' && flowmap && <DetailsScreen flowmap={flowmap} actions={<ExportMenu flowmap={flowmap} />} />}
     </div>
   );
 }
@@ -224,6 +287,147 @@ function ExportMenu({ flowmap }: { flowmap: FlowMap }) {
       </div>
     </details>
   );
+}
+
+function LibraryPanel({
+  tracks,
+  onOpenTrack,
+  onDeleteTrack,
+  onNewTrack,
+}: {
+  tracks: LibraryTrack[];
+  onOpenTrack: (trackId: string) => void;
+  onDeleteTrack: (track: LibraryTrack) => void;
+  onNewTrack: (file: File) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  function pick(fileList: FileList | null) {
+    const file = fileList?.[0];
+    if (!file) return;
+    onNewTrack(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  return (
+    <section className="library-panel">
+      <div className="library-head">
+        <div>
+          <h1>Library</h1>
+          <p>{tracks.length ? `${tracks.length} analyzed tracks` : 'No analyzed tracks yet'}</p>
+        </div>
+        <button className="add-track-btn" onClick={() => fileInputRef.current?.click()}>
+          <Plus size={16} /> Add Track
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".mp3,.wav,.aiff,.aif,.m4a,.ogg,.flac"
+          hidden
+          onChange={(event) => pick(event.currentTarget.files)}
+        />
+      </div>
+      <div className="library-grid">
+        {tracks.map((track) => (
+          <article key={track.id} className="track-card">
+            <button className="track-card-open" onClick={() => onOpenTrack(track.id)}>
+              <span className="track-card-title">{track.title}</span>
+              <span className="track-card-meta">
+                {track.bpm.toFixed(1)} BPM · {track.bars} bars · {track.syllables} syllables
+              </span>
+              <span className="track-card-row">
+                <span>Density</span>
+                <b>{track.summary.avg_density?.toFixed?.(2) ?? '0.00'}</b>
+              </span>
+              <span className="track-card-row">
+                <span>Sync</span>
+                <b>{((track.summary.syncopation_score || 0) * 100).toFixed(0)}%</b>
+              </span>
+              <span className="track-card-date">{formatDate(track.created_at)}</span>
+            </button>
+            <button className="track-delete-btn" aria-label={`Delete ${track.title}`} onClick={() => onDeleteTrack(track)}>
+              <Trash2 size={15} />
+            </button>
+          </article>
+        ))}
+        {tracks.length === 0 && (
+          <div className="empty-library">
+            <Upload size={34} />
+            <span>Add a track to start building your analysis library.</span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function AnalysisPopup({
+  filename,
+  steps,
+  error,
+  status,
+  onClose,
+}: {
+  filename: string;
+  steps: Record<StepId, StepState>;
+  error: string;
+  status: 'running' | 'done' | 'error';
+  onClose: () => void;
+}) {
+  return (
+    <div className="analysis-modal-backdrop" role="presentation">
+      <section className="analysis-modal" role="dialog" aria-modal="true" aria-label="Track analysis progress">
+        <div className="analysis-modal-head">
+          <div>
+            <h2>{status === 'done' ? 'Analysis Complete' : status === 'error' ? 'Analysis Failed' : 'Analyzing Track'}</h2>
+            <p>Medium model · {filename}</p>
+          </div>
+          {status !== 'running' && (
+            <button className="ghost-btn" onClick={onClose}>
+              Close
+            </button>
+          )}
+        </div>
+        <ProgressPanel filename={filename} steps={steps} error={error} />
+      </section>
+    </div>
+  );
+}
+
+function DeleteTrackModal({
+  track,
+  onCancel,
+  onConfirm,
+}: {
+  track: LibraryTrack;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="analysis-modal-backdrop" role="presentation">
+      <section className="confirm-modal" role="dialog" aria-modal="true" aria-label="Delete track confirmation">
+        <div className="confirm-icon">
+          <Trash2 size={18} />
+        </div>
+        <h2>Delete Track</h2>
+        <p>
+          Remove <b>{track.title}</b> and all saved analysis data from the library.
+        </p>
+        <div className="confirm-actions">
+          <button className="ghost-btn" onClick={onCancel}>Cancel</button>
+          <button className="danger-btn" onClick={onConfirm}>
+            <Trash2 size={15} /> Delete
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function formatDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function getBarTimeRange(flowmap: FlowMap, barNo: number): { start: number; end: number } | null {
@@ -276,60 +480,4 @@ function getWordTimeRange(flowmap: FlowMap, target: FlowSyllable): { start: numb
     Math.max(start + 0.28, next?.start ? next.start - 0.03 : estimatedEnd),
   );
   return end > start ? { start, end } : null;
-}
-
-function UploadPanel({
-  onAnalyze,
-  model,
-  onModelChange,
-}: {
-  onAnalyze: (file: File) => void;
-  model: string;
-  onModelChange: (model: string) => void;
-}) {
-  const [dragging, setDragging] = useState(false);
-
-  function pick(fileList: FileList | null) {
-    const file = fileList?.[0];
-    if (file) onAnalyze(file);
-  }
-
-  return (
-    <>
-      <label
-        className={`drop-zone ${dragging ? 'drag-over' : ''}`}
-        onDragOver={(event) => {
-          event.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(event) => {
-          event.preventDefault();
-          setDragging(false);
-          pick(event.dataTransfer.files);
-        }}
-      >
-        <Upload size={40} />
-        <span className="drop-label">Drop your track here</span>
-        <span className="drop-sub">MP3, WAV, AIFF, M4A</span>
-        <span className="select-btn">Select File</span>
-        <input
-          type="file"
-          accept=".mp3,.wav,.aiff,.aif,.m4a,.ogg,.flac"
-          hidden
-          onChange={(event) => pick(event.currentTarget.files)}
-        />
-      </label>
-      <div className="analysis-options">
-        <label className="opt-field">
-          <span>Model</span>
-          <select value={model} onChange={(event) => onModelChange(event.target.value)}>
-            <option value="small">Small</option>
-            <option value="medium">Medium</option>
-            <option value="base">Base</option>
-          </select>
-        </label>
-      </div>
-    </>
-  );
 }

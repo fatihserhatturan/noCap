@@ -13,20 +13,14 @@ const compareOptions: Array<{ key: CompareMetric; label: string }> = [
   { key: 'timing_variance', label: 'Timing' },
 ];
 
-export function MetricsPanel({
+export function FlowStatsPanel({
   flowmap,
-  activeRhyme,
-  onActiveRhymeChange,
   hoveredBar,
 }: {
   flowmap: FlowMap;
-  activeRhyme: string | null;
-  onActiveRhymeChange: (group: string | null) => void;
   hoveredBar: number | null;
 }) {
-  const colors = buildColorMap(flowmap.rhyme_chains.map((chain) => chain.group));
   const [compareMetric, setCompareMetric] = useState<CompareMetric>('density');
-  const bar = hoveredBar ? flowmap.bars.find((item) => item.bar_no === hoveredBar) : null;
   const comparedBars = useMemo(() => {
     const max = Math.max(...flowmap.bars.map((item) => item[compareMetric]), 0.01);
     return [...flowmap.bars]
@@ -49,7 +43,7 @@ export function MetricsPanel({
   ];
 
   return (
-    <aside className="sidebar">
+    <>
       <section>
         <h3>Flow Metrics</h3>
         <div className="metrics-list">
@@ -91,6 +85,23 @@ export function MetricsPanel({
           ))}
         </div>
       </section>
+    </>
+  );
+}
+
+export function MetricsPanel({
+  flowmap,
+  activeRhyme,
+  onActiveRhymeChange,
+}: {
+  flowmap: FlowMap;
+  activeRhyme: string | null;
+  onActiveRhymeChange: (group: string | null) => void;
+}) {
+  const colors = buildColorMap(flowmap.rhyme_chains.map((chain) => chain.group));
+
+  return (
+    <aside className="sidebar">
       <section>
         <h3>Rhyme Groups</h3>
         <div className="rhyme-list">
@@ -117,7 +128,6 @@ export function MetricsPanel({
                 <span className="rh-swatch" style={{ backgroundColor: color }} />
                 <span className="rh-body">
                   <span className="rh-top">
-                    <b>{chain.group}</b>
                     <small>{chain.meta}</small>
                   </span>
                   <span className="rh-words" style={{ color }}>{words}</span>
@@ -125,22 +135,6 @@ export function MetricsPanel({
               </button>
             );
           })}
-        </div>
-      </section>
-      <section>
-        <h3>Bar Detail</h3>
-        <div className="bar-detail">
-          {bar ? (
-            <>
-              Bar {bar.bar_no}<br />
-              Density: {bar.density} syl/beat<br />
-              Syncopation: {(bar.syncopation_score * 100).toFixed(0)}%<br />
-              Timing: {(bar.timing_variance * 100).toFixed(1)}<br />
-              Pocket: {bar.pocket_offset.toFixed(3)}<br />
-              Stressed: {(bar.stressed_ratio * 100).toFixed(0)}%<br />
-              Syllables: {bar.syllable_count}
-            </>
-          ) : 'Hover over a bar'}
         </div>
       </section>
     </aside>

@@ -1,13 +1,19 @@
 import { Mic2, Music2 } from 'lucide-react';
+import type { FlowMap } from '../types';
+import { FlowStatsPanel } from './MetricsPanel';
 
 export function SourcePanel({
   source,
   onSourceChange,
   hasVocals,
+  flowmap,
+  hoveredBar,
 }: {
   source: 'mix' | 'vocals';
   onSourceChange: (source: 'mix' | 'vocals') => void;
   hasVocals: boolean;
+  flowmap: FlowMap;
+  hoveredBar: number | null;
 }) {
   return (
     <aside className="left-panel">
@@ -29,6 +35,7 @@ export function SourcePanel({
         </div>
         {!hasVocals && <div className="muted-note">Vocals not available</div>}
       </section>
+      <FlowStatsPanel flowmap={flowmap} hoveredBar={hoveredBar} />
     </aside>
   );
 }

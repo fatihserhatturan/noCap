@@ -1,4 +1,4 @@
-import type { AnalyzeMessage, FlowMap } from '../types';
+import type { AnalyzeMessage, FlowMap, LibraryTrack } from '../types';
 import { normalizeFlowMap } from '../flow/normalize';
 
 export async function fetchFlowmap(): Promise<FlowMap | null> {
@@ -14,6 +14,38 @@ export async function hasAudio(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+export async function fetchLibrary(): Promise<LibraryTrack[]> {
+  const res = await fetch('/api/library');
+  if (!res.ok) return [];
+  const data = await res.json() as { tracks?: LibraryTrack[] };
+  return data.tracks || [];
+}
+
+export async function openLibraryTrack(trackId: string): Promise<{
+  flowmap: FlowMap;
+  track: LibraryTrack;
+  has_audio: boolean;
+  has_vocals: boolean;
+}> {
+  const res = await fetch(`/api/library/${encodeURIComponent(trackId)}/open`);
+  if (!res.ok) throw new Error(`Could not open track (${res.status})`);
+  const data = await res.json() as {
+    flowmap: FlowMap;
+    track: LibraryTrack;
+    has_audio: boolean;
+    has_vocals: boolean;
+  };
+  return {
+    ...data,
+    flowmap: normalizeFlowMap(data.flowmap),
+  };
+}
+
+export async function deleteLibraryTrack(trackId: string): Promise<void> {
+  const res = await fetch(`/api/library/${encodeURIComponent(trackId)}/delete`, { method: 'POST' });
+  if (!res.ok) throw new Error(`Could not delete track (${res.status})`);
 }
 
 export async function analyzeTrack(

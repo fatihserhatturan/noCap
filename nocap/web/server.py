@@ -3,9 +3,13 @@ from __future__ import annotations
 import json
 import tempfile
 import atexit
+import shutil
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 _FRONTEND_DIST_DIR = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+_LIBRARY_DIR = Path(__file__).resolve().parents[2] / ".nocap_library" / "tracks"
 
 # current session state (set after a successful analysis)
 _current_flowmap: dict | None = None
@@ -40,6 +44,125 @@ def _set_current_files(audio: Path | None, vocals: Path | None, owned: set[Path]
 
 
 atexit.register(_cleanup_all_owned_temp)
+
+
+def _safe_suffix(filename: str | None) -> str:
+    suffix = Path(filename or "").suffix.lower()
+    return suffix if suffix else ".mp3"
+
+
+def _track_dir(track_id: str) -> Path:
+    return _LIBRARY_DIR / track_id
+
+
+def _track_metadata_path(track_id: str) -> Path:
+    return _track_dir(track_id) / "metadata.json"
+
+
+def _track_flowmap_path(track_id: str) -> Path:
+    return _track_dir(track_id) / "flowmap.json"
+
+
+def _read_track_metadata(track_id: str) -> dict | None:
+    path = _track_metadata_path(track_id)
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    data["id"] = track_id
+    return data
+
+
+def _list_library_tracks() -> list[dict]:
+    if not _LIBRARY_DIR.exists():
+        return []
+    tracks = [
+        metadata
+        for item in _LIBRARY_DIR.iterdir()
+        if item.is_dir()
+        for metadata in [_read_track_metadata(item.name)]
+        if metadata is not None
+    ]
+    return sorted(tracks, key=lambda item: item.get("created_at", ""), reverse=True)
+
+
+def _save_library_track(
+    *,
+    track_id: str,
+    title: str,
+    flowmap: dict,
+    tmp_audio: Path,
+    audio_suffix: str,
+    vocals_path: Path | None,
+) -> tuple[dict, Path, Path | None]:
+    track_dir = _track_dir(track_id)
+    track_dir.mkdir(parents=True, exist_ok=True)
+
+    audio_path = track_dir / f"audio{audio_suffix}"
+    tmp_audio.replace(audio_path)
+
+    stored_vocals = None
+    if vocals_path is not None and vocals_path.exists():
+        stored_vocals = track_dir / "vocals.wav"
+        shutil.move(str(vocals_path), str(stored_vocals))
+
+    flowmap["metadata"]["audio_path"] = str(audio_path)
+    _track_flowmap_path(track_id).write_text(
+        json.dumps(flowmap, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    metadata = {
+        "id": track_id,
+        "title": title,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "bpm": flowmap.get("metadata", {}).get("bpm", 0),
+        "duration": flowmap.get("metadata", {}).get("duration", 0),
+        "bars": len(flowmap.get("bars", [])),
+        "syllables": len(flowmap.get("syllables", [])),
+        "summary": flowmap.get("summary", {}),
+        "has_audio": True,
+        "has_vocals": stored_vocals is not None,
+    }
+    _track_metadata_path(track_id).write_text(
+        json.dumps(metadata, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return metadata, audio_path, stored_vocals
+
+
+def _load_library_track(track_id: str) -> tuple[dict, Path, Path | None, dict]:
+    metadata = _read_track_metadata(track_id)
+    if metadata is None:
+        raise FileNotFoundError(track_id)
+    flowmap_path = _track_flowmap_path(track_id)
+    if not flowmap_path.exists():
+        raise FileNotFoundError(track_id)
+    flowmap = json.loads(flowmap_path.read_text(encoding="utf-8"))
+    audio_path = Path(flowmap.get("metadata", {}).get("audio_path", ""))
+    vocals_path = _track_dir(track_id) / "vocals.wav"
+    return flowmap, audio_path, vocals_path if vocals_path.exists() else None, metadata
+
+
+def _delete_library_track(track_id: str) -> None:
+    global _current_flowmap
+    track_dir = _track_dir(track_id)
+    if not track_dir.exists() or not track_dir.is_dir():
+        raise FileNotFoundError(track_id)
+
+    try:
+        current_audio_in_track = _current_audio is not None and _current_audio.resolve().is_relative_to(track_dir.resolve())
+        current_vocals_in_track = _current_vocals is not None and _current_vocals.resolve().is_relative_to(track_dir.resolve())
+    except OSError:
+        current_audio_in_track = False
+        current_vocals_in_track = False
+
+    shutil.rmtree(track_dir)
+    if current_audio_in_track or current_vocals_in_track:
+        _current_flowmap = None
+        _set_current_files(None, None)
 
 
 def start(
@@ -95,6 +218,42 @@ def start(
                 abort(404)
             return send_file(str(_current_vocals), conditional=True)
 
+        @app.route("/api/library")
+        def library_api():
+            return {"tracks": _list_library_tracks()}
+
+        @app.route("/api/library/<track_id>/open")
+        def library_open_api(track_id: str):
+            global _current_flowmap
+            try:
+                flowmap, audio_path, vocals_path, metadata = _load_library_track(track_id)
+            except FileNotFoundError:
+                abort(404)
+            _current_flowmap = flowmap
+            _set_current_files(audio_path if audio_path.exists() else None, vocals_path)
+            return {
+                "flowmap": flowmap,
+                "track": metadata,
+                "has_audio": audio_path.exists(),
+                "has_vocals": vocals_path is not None and vocals_path.exists(),
+            }
+
+        @app.route("/api/library/<track_id>", methods=["DELETE"])
+        def library_delete_api(track_id: str):
+            try:
+                _delete_library_track(track_id)
+            except FileNotFoundError:
+                abort(404)
+            return {"ok": True}
+
+        @app.route("/api/library/<track_id>/delete", methods=["POST"])
+        def library_delete_post_api(track_id: str):
+            try:
+                _delete_library_track(track_id)
+            except FileNotFoundError:
+                abort(404)
+            return {"ok": True}
+
         @app.route("/api/analyze", methods=["POST"])
         def analyze_api():
             if "audio" not in request.files:
@@ -104,12 +263,13 @@ def start(
             model_name  = request.form.get("model") or "small"
             if model_name not in {"tiny", "base", "small", "medium", "large"}:
                 model_name = "small"
-            suffix      = Path(uploaded.filename).suffix.lower() or ".mp3"
+            suffix      = _safe_suffix(uploaded.filename)
             tmp         = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
             tmp.close()
             uploaded.save(tmp.name)
             tmp_path    = Path(tmp.name)
             track_title = Path(uploaded.filename).stem
+            track_id    = uuid.uuid4().hex
 
             @stream_with_context
             def generate():
@@ -204,13 +364,14 @@ def start(
                     from nocap.analysis.exporter import build_flowmap
                     bar_metrics = compute_bar_metrics(aligned, grid)
                     summary     = compute_summary(bar_metrics, aligned)
+                    final_audio_path = _track_dir(track_id) / f"audio{suffix}"
                     flowmap     = build_flowmap(
                         title=track_title,
                         grid=grid,
                         syllables=aligned,
                         bar_metrics=bar_metrics,
                         summary=summary,
-                        audio_path=str(tmp_path),
+                        audio_path=str(final_audio_path),
                         duration=audio_data.duration,
                         transcript_words=tr.words,
                         word_analyses=all_words,
@@ -220,22 +381,30 @@ def start(
                     yield _sse("progress", step="align",
                                msg=f"{len(aligned)} syllables mapped", done=True)
 
+                    metadata, stored_audio_path, stored_vocals_path = _save_library_track(
+                        track_id=track_id,
+                        title=track_title,
+                        flowmap=flowmap,
+                        tmp_audio=tmp_path,
+                        audio_suffix=suffix,
+                        vocals_path=vocals_path,
+                    )
+
                     # store for /api/flowmap.json, /api/audio, /api/audio/vocals
                     _current_flowmap = flowmap
-                    owned_paths = {tmp_path}
-                    if vocals_path is not None:
-                        owned_paths.add(vocals_path)
-                    _set_current_files(tmp_path, vocals_path, owned_paths)
+                    _set_current_files(stored_audio_path, stored_vocals_path)
 
                     yield _sse("complete",
                                flowmap=flowmap,
-                               has_vocals=vocals_path is not None)
+                               track=metadata,
+                               has_vocals=stored_vocals_path is not None)
 
                 except Exception as exc:
                     import traceback
                     yield _sse("error", msg=str(exc),
                                trace=traceback.format_exc())
                     tmp_path.unlink(missing_ok=True)
+                    shutil.rmtree(_track_dir(track_id), ignore_errors=True)
 
             return Response(
                 generate(),

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Application, Container, Graphics, Text } from 'pixi.js';
-import type { FlowMap, FlowSyllable } from '../types';
+import type { FlowBar, FlowMap, FlowSyllable } from '../types';
 import { buildColorMap } from '../flow/colors';
 import {
   FLOW_DIMS,
@@ -17,6 +17,12 @@ interface TooltipState {
   x: number;
   y: number;
   syllable: FlowSyllable;
+}
+
+interface BarTooltipState {
+  x: number;
+  y: number;
+  bar: FlowBar;
 }
 
 interface Props {
@@ -44,6 +50,7 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover, o
   const onWordPlayRef = useRef(onWordPlay);
   const [pixiReady, setPixiReady] = useState(false);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [barTooltip, setBarTooltip] = useState<BarTooltipState | null>(null);
   const [containerWidth, setContainerWidth] = useState(900);
 
   const colorMap = useMemo(
@@ -89,11 +96,13 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover, o
       const y = (event.clientY - bounds.top) * scaleY;
       const hit = hitTest(rectsRef.current, x, y);
       const barNo = findBarAtY(flowmap, y);
+      const densityBar = findDensityBarAtPoint(flowmap, activeLayout, x, y);
 
       hoveredRectRef.current = hit;
       hoveredBarRef.current = barNo;
       drawHover(hoverRef.current, hit, barNo);
       setTooltip(hit ? { x: event.clientX + 14, y: event.clientY - 12, syllable: hit.syllable } : null);
+      setBarTooltip(!hit && densityBar ? { x: event.clientX + 14, y: event.clientY - 12, bar: densityBar } : null);
       onBarHoverRef.current(barNo);
       canvas.classList.toggle('flow-canvas-playable', hitPlayButton(x, y, barNo));
     };
@@ -125,6 +134,7 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover, o
       hoveredBarRef.current = null;
       drawHover(hoverRef.current, null, null);
       setTooltip(null);
+      setBarTooltip(null);
       onBarHoverRef.current(null);
       getPixiCanvas(app)?.classList.remove('flow-canvas-playable');
     };
@@ -408,8 +418,19 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover, o
           <div className="tt-row">Stress <span>{tooltip.syllable.stress ? 'stressed' : 'unstressed'}</span></div>
           <div className="tt-row">Grid <span>{tooltip.syllable.subdivision} · {tooltip.syllable.is_on_beat ? 'on beat' : 'off beat'}</span></div>
           <div className="tt-row">Timing <span>{(tooltip.syllable.timing_quality * 100).toFixed(0)}%</span></div>
-          {tooltip.syllable.rhyme_group && <div className="tt-row">Rhyme <span>Group {tooltip.syllable.rhyme_group}</span></div>}
+          {tooltip.syllable.rhyme_group && <div className="tt-row">Rhyme <span>detected</span></div>}
           {tooltip.syllable.center_time >= 0 && <div className="tt-row">Time <span>{tooltip.syllable.center_time.toFixed(2)}s</span></div>}
+        </div>
+      )}
+      {barTooltip && (
+        <div className="tooltip bar-tooltip" style={{ left: barTooltip.x, top: barTooltip.y }}>
+          <div className="tt-word">Bar {barTooltip.bar.bar_no}</div>
+          <div className="tt-row">Density <span>{barTooltip.bar.density} syl/beat</span></div>
+          <div className="tt-row">Syncopation <span>{(barTooltip.bar.syncopation_score * 100).toFixed(0)}%</span></div>
+          <div className="tt-row">Timing <span>{(barTooltip.bar.timing_variance * 100).toFixed(1)}</span></div>
+          <div className="tt-row">Pocket <span>{barTooltip.bar.pocket_offset.toFixed(3)}</span></div>
+          <div className="tt-row">Stressed <span>{(barTooltip.bar.stressed_ratio * 100).toFixed(0)}%</span></div>
+          <div className="tt-row">Syllables <span>{barTooltip.bar.syllable_count}</span></div>
         </div>
       )}
     </div>
@@ -424,6 +445,20 @@ function findBarAtY(flowmap: FlowMap, y: number): number | null {
   const rowIndex = Math.floor((y - FLOW_DIMS.headerH) / FLOW_DIMS.barH);
   if (rowIndex < 0 || rowIndex >= flowmap.bars.length) return null;
   return flowmap.bars[rowIndex].bar_no;
+}
+
+function findDensityBarAtPoint(flowmap: FlowMap, layout: FlowLayout, x: number, y: number): FlowBar | null {
+  const rowIndex = Math.floor((y - FLOW_DIMS.headerH) / FLOW_DIMS.barH);
+  if (rowIndex < 0 || rowIndex >= flowmap.bars.length) return null;
+
+  const densityX = FLOW_DIMS.labelW + layout.signature * layout.beatW + 4;
+  const densityY = FLOW_DIMS.headerH + rowIndex * FLOW_DIMS.barH + 6;
+  const densityW = FLOW_DIMS.densW - 8;
+  const densityH = FLOW_DIMS.barH - 12;
+  if (x < densityX || x > densityX + densityW || y < densityY || y > densityY + densityH) {
+    return null;
+  }
+  return flowmap.bars[rowIndex];
 }
 
 function resizePixi(app: Application | null, layout: FlowLayout | null) {
