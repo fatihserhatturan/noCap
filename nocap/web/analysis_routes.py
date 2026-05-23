@@ -10,6 +10,7 @@ from pathlib import Path
 
 from nocap.library import LibraryStore
 from nocap.pipeline import AnalysisOptions, ProgressEvent, analyze_track
+from nocap.runtime import release_heavy_resources
 
 from .sse import safe_suffix, sse
 from .state import SessionState
@@ -48,6 +49,8 @@ def register_analysis_routes(app, store: LibraryStore, state: SessionState) -> N
                     events.put(("complete", result))
                 except Exception as exc:
                     events.put(("error", exc))
+                finally:
+                    release_heavy_resources()
 
             threading.Thread(target=run, daemon=True).start()
             while True:

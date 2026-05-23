@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from nocap.audio.beat_tracker import BeatGrid
 from nocap.analysis.aligner import AlignedSyllable
+from nocap.analysis.pocket_metrics import apply_track_pocket_profile, pocket_score, signed_beat_offset, variance as calc_variance
 
 
 @dataclass
@@ -19,6 +20,9 @@ class BarMetrics:
     pocket_offset: float = 0.0
     timing_variance: float = 0.0
     stressed_on_beat_ratio: float = 0.0
+    pocket_consistency: float = 0.0
+    pocket_confidence: float = 0.0
+    pocket_label: str = "loose"
 
 
 @dataclass
@@ -60,9 +64,9 @@ def compute_bar_metrics(syllables: list[AlignedSyllable], grid: BeatGrid) -> lis
         stressed_on_beat = sum(1 for s in syls if s.stress and s.is_on_beat)
         stressed_on_beat_ratio = stressed_on_beat / stressed if stressed else 0.0
 
-        offsets = [_signed_beat_offset(s.beat_pos) for s in syls]
+        offsets = [signed_beat_offset(s.beat_pos) for s in syls]
         pocket_offset = sum(offsets) / len(offsets) if offsets else 0.0
-        timing_variance = _variance(offsets)
+        timing_variance = calc_variance(offsets)
 
         metrics.append(BarMetrics(
             bar_no=bar_no,
@@ -75,6 +79,7 @@ def compute_bar_metrics(syllables: list[AlignedSyllable], grid: BeatGrid) -> lis
             timing_variance=round(timing_variance, 3),
             stressed_on_beat_ratio=round(stressed_on_beat_ratio, 3),
         ))
+    apply_track_pocket_profile(metrics)
     return metrics
 
 
@@ -102,7 +107,7 @@ def compute_summary(
     rhyme_chain_avg = _avg_rhyme_chain(syllables)
     pocket_score = _pocket_score(bar_metrics)
     timing_quality_avg = _timing_quality_avg(syllables)
-    density_variation = _variance(densities)
+    density_variation = calc_variance(densities)
     delivery_consistency = _delivery_consistency(consistency, pocket_score, timing_quality_avg)
 
     return FlowSummary(
@@ -156,22 +161,8 @@ def _syncopation_score(syllable: AlignedSyllable) -> float:
     return max(0.0, min(1.0, beat_distance / 0.5))
 
 
-def _signed_beat_offset(beat_pos: float) -> float:
-    return beat_pos if beat_pos <= 0.5 else beat_pos - 1.0
-
-
-def _variance(values: list[float]) -> float:
-    if not values:
-        return 0.0
-    avg = sum(values) / len(values)
-    return sum((value - avg) ** 2 for value in values) / len(values)
-
-
 def _pocket_score(bar_metrics: list[BarMetrics]) -> float:
-    if not bar_metrics:
-        return 0.0
-    avg_variance = sum(b.timing_variance for b in bar_metrics) / len(bar_metrics)
-    return max(0.0, min(1.0, 1.0 - avg_variance * 8.0))
+    return pocket_score(bar_metrics)
 
 
 def _timing_quality_avg(syllables: list[AlignedSyllable]) -> float:

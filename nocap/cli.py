@@ -7,6 +7,7 @@ import click
 
 from nocap.i18n import msg
 from nocap.pipeline import AnalysisOptions, ProgressEvent, analyze_lyrics, analyze_track
+from nocap.runtime import release_heavy_resources
 
 
 @click.group(help=msg("cli.description"))
@@ -50,6 +51,8 @@ def analyze(
     except (ImportError, ValueError) as exc:
         click.echo(msg("cli.error", error=exc))
         sys.exit(1)
+    finally:
+        release_heavy_resources()
 
     from nocap.analysis.exporter import save
     resolved_title = title or (audio.stem if audio else lyrics.stem if lyrics else "untitled")

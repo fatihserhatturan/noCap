@@ -54,6 +54,9 @@ export interface FlowBar {
   timing_variance: number;
   stressed_on_beat_ratio: number;
   stressed_ratio: number;
+  pocket_consistency: number;
+  pocket_confidence: number;
+  pocket_label: 'ahead' | 'center' | 'behind' | 'loose' | string;
   onset_density: number;
   onset_strength_avg: number;
   vocal_onset_alignment: number;

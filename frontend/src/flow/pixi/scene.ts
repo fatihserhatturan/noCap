@@ -1,7 +1,7 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import type { FlowMap, FlowSyllable } from '../../types';
 import { FLOW_DIMS, barIndexMap, groupSyllablesByBar, syllableRect, type FlowLayout, type SyllableRect } from '../layout';
-import { drawBeatEventMarker, drawEnergyBackground, drawOnsetBeats } from './contextOverlay';
+import { drawBeatEventMarker, drawEnergyBackground, drawOnsetBeats, drawPocketMarker, drawRhythmWarningMarker } from './contextOverlay';
 
 export interface SceneContext {
   flowmap: FlowMap;
@@ -47,6 +47,8 @@ function drawBars(graphics: Graphics, scene: Container, ctx: SceneContext) {
     drawEnergyBackground(graphics, bar, ctx.layout, rowY);
     drawOnsetBeats(graphics, ctx.flowmap, ctx.layout, rowY, bar.bar_no);
     drawBeatEventMarker(graphics, ctx.flowmap.bars, index, rowY);
+    drawRhythmWarningMarker(graphics, ctx.flowmap.bars, index, rowY);
+    drawPocketMarker(graphics, bar, rowY);
     drawDensity(graphics, ctx.layout, rowY, bar.density / maxDensity);
     for (const syllable of byBar.get(bar.bar_no) || []) {
       const rowIndex = indexByBar.get(syllable.bar_no);

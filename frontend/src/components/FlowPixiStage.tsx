@@ -171,7 +171,7 @@ function BarTooltip({ tooltip }: { tooltip: BarTooltipState }) {
       <div className="tt-row">{t('tooltip.localBpm')} <span>{bar.local_bpm.toFixed(1)}</span></div>
       <div className="tt-row">{t('tooltip.brightness')} <span>{bar.spectral_centroid_avg.toFixed(0)} Hz</span></div>
       <div className="tt-row">{t('tooltip.timing')} <span>{(bar.timing_variance * 100).toFixed(1)}</span></div>
-      <div className="tt-row">{t('tooltip.pocket')} <span>{bar.pocket_offset.toFixed(3)}</span></div>
+      <div className="tt-row">{t('tooltip.pocket')} <span>{bar.pocket_label} · {(bar.pocket_confidence * 100).toFixed(0)}%</span></div>
       <div className="tt-row">{t('tooltip.stressed')} <span>{(bar.stressed_ratio * 100).toFixed(0)}%</span></div>
       <div className="tt-row">{t('tooltip.syllables')} <span>{bar.syllable_count}</span></div>
     </div>
