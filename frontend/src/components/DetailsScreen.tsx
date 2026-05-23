@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { FlowBar, FlowMap } from '../types';
 import { t } from '../i18n';
+import { EnergyPanel } from './EnergyPanel';
+import { SectionPanel } from './SectionPanel';
 
 type CompareMetric = 'density' | 'syncopation_score' | 'stressed_ratio' | 'syllable_count' | 'pocket_offset' | 'timing_variance';
 
@@ -101,6 +103,8 @@ export function DetailsScreen({
       </section>
 
       <section className="details-grid">
+        <SectionPanel sections={flowmap.sections} />
+        <EnergyPanel bars={flowmap.bars} sections={flowmap.sections} />
         <div className="details-panel details-panel-wide">
           <div className="details-panel-head">
             <h3>{t('metrics.barCompare')}</h3>
@@ -141,7 +145,7 @@ export function DetailsScreen({
           </dl>
         </div>
 
-        <div className="details-panel details-panel-wide">
+        <div className="details-panel details-panel-wide bar-data-panel">
           <h3>{t('details.barData')}</h3>
           <div className="bar-data-table">
             <div className="bar-data-row bar-data-head">

@@ -1,65 +1,27 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import numpy as np
 
-from nocap.i18n import msg
+from nocap.analysis.beat_selection import select_best_grid
+from nocap.audio.beat_candidates import candidate_from_signal
+from nocap.audio.beat_grid import Beat, BeatGrid
+from nocap.audio.features import percussive_signal
 
 from .loader import AudioData
 
 
-@dataclass
-class Beat:
-    time: float      # seconds
-    beat_no: int     # 1-based within bar (1-4 for 4/4)
-    bar_no: int      # 1-based bar index
-    confidence: float = 1.0
-    downbeat_confidence: float = 0.0
-    source: str = "detected"
-
-
-@dataclass
-class BeatGrid:
-    bpm: float
-    beats: list[Beat]
-    time_signature: int = 4   # beats per bar
-
-
 def track(audio: AudioData, time_signature: int = 4) -> BeatGrid:
     """Detect BPM and build a beat grid from an AudioData object."""
+    mix_grid = candidate_from_signal(audio.y, audio.sr, time_signature, source="mix")
+    candidates = [mix_grid]
     try:
-        import librosa
-    except ImportError as e:
-        raise ImportError(msg("audio.needLibrosa")) from e
-
-    tempo, beat_frames = librosa.beat.beat_track(
-        y=audio.y, sr=audio.sr, units="frames"
-    )
-    beat_times: np.ndarray = librosa.frames_to_time(beat_frames, sr=audio.sr)
-
-    bpm = float(np.atleast_1d(tempo)[0])
-    if not np.isfinite(bpm) or bpm <= 0:
-        bpm = 90.0
-
-    if len(beat_times) == 0:
-        return build_from_bpm(bpm, audio.duration, time_signature=time_signature)
-
-    confidence = _beat_confidence(beat_times)
-    beats: list[Beat] = []
-    for i, t in enumerate(beat_times):
-        beat_no = (i % time_signature) + 1
-        bar_no = (i // time_signature) + 1
-        beats.append(Beat(
-            time=float(t),
-            beat_no=beat_no,
-            bar_no=bar_no,
-            confidence=confidence,
-            downbeat_confidence=0.5 if beat_no == 1 else 0.0,
-            source="detected",
-        ))
-
-    return BeatGrid(bpm=bpm, beats=beats, time_signature=time_signature)
+        candidates.append(candidate_from_signal(percussive_signal(audio.y), audio.sr, time_signature, source="percussive"))
+    except Exception:
+        pass
+    grid = select_best_grid(candidates)
+    if grid is None:
+        return build_from_bpm(mix_grid.bpm, audio.duration, time_signature=time_signature)
+    return grid
 
 
 def build_from_bpm(bpm: float, duration: float, time_signature: int = 4) -> BeatGrid:
@@ -139,11 +101,5 @@ def apply_detected_downbeat_offset(
 
 
 def _beat_confidence(beat_times: np.ndarray) -> float:
-    if len(beat_times) < 3:
-        return 0.5
-    intervals = np.diff(beat_times)
-    mean = float(np.mean(intervals))
-    if mean <= 0:
-        return 0.35
-    jitter = float(np.std(intervals) / mean)
-    return round(max(0.35, min(1.0, 1.0 - jitter * 2.0)), 3)
+    from nocap.audio.beat_candidates import beat_confidence
+    return beat_confidence(beat_times)

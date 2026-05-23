@@ -1,6 +1,7 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import type { FlowMap, FlowSyllable } from '../../types';
 import { FLOW_DIMS, barIndexMap, groupSyllablesByBar, syllableRect, type FlowLayout, type SyllableRect } from '../layout';
+import { drawBeatEventMarker, drawEnergyBackground, drawOnsetBeats } from './contextOverlay';
 
 export interface SceneContext {
   flowmap: FlowMap;
@@ -43,6 +44,9 @@ function drawBars(graphics: Graphics, scene: Container, ctx: SceneContext) {
   ctx.flowmap.bars.forEach((bar, index) => {
     const rowY = FLOW_DIMS.headerH + index * FLOW_DIMS.barH;
     drawGridRow(graphics, scene, ctx.layout, rowY, gridW, index, bar.bar_no);
+    drawEnergyBackground(graphics, bar, ctx.layout, rowY);
+    drawOnsetBeats(graphics, ctx.flowmap, ctx.layout, rowY, bar.bar_no);
+    drawBeatEventMarker(graphics, ctx.flowmap.bars, index, rowY);
     drawDensity(graphics, ctx.layout, rowY, bar.density / maxDensity);
     for (const syllable of byBar.get(bar.bar_no) || []) {
       const rowIndex = indexByBar.get(syllable.bar_no);
@@ -62,9 +66,9 @@ function drawGridRow(graphics: Graphics, scene: Container, layout: FlowLayout, r
       graphics.moveTo(sx, rowY + FLOW_DIMS.barH * 0.35).lineTo(sx, rowY + FLOW_DIMS.barH).stroke({ color: 0x151515, width: 1 });
     }
   }
-  const label = new Text({ text: `Bar ${barNo}`, style: { fill: 0x555555, fontFamily: 'monospace', fontSize: 10 } });
-  label.anchor.set(1, 0.5);
-  label.position.set(FLOW_DIMS.labelW - 8, rowY + FLOW_DIMS.barH / 2);
+  const label = new Text({ text: String(barNo), style: { fill: 0x555555, fontFamily: 'monospace', fontSize: 10 } });
+  label.anchor.set(0.5, 0.5);
+  label.position.set(FLOW_DIMS.labelW / 2 - 6, rowY + FLOW_DIMS.barH / 2);
   scene.addChild(label);
 }
 

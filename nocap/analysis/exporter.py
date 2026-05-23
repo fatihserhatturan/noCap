@@ -25,6 +25,12 @@ def build_flowmap(
     word_analyses: list[WordAnalysis] | None = None,
     analysis_mode: str = "legacy",
     beat_source: str | None = None,
+    beat_onsets: list[Any] | None = None,
+    bar_onsets: list[Any] | None = None,
+    beat_tempos: list[Any] | None = None,
+    bar_tempos: list[Any] | None = None,
+    bar_spectral: list[Any] | None = None,
+    sections: list[Any] | None = None,
 ) -> dict[str, Any]:
     metadata_duration = duration if duration is not None else (grid.beats[-1].time if grid.beats else 0.0)
     return {
@@ -37,12 +43,13 @@ def build_flowmap(
             "audio_path": audio_path,
             "analysis_mode": analysis_mode,
         },
-        "beats": beats_out(grid, beat_source),
+        "beats": beats_out(grid, beat_source, beat_onsets, beat_tempos),
         "words": build_words(transcript_words, word_analyses, syllables),
         "syllables": syllables_out(syllables),
-        "bars": bars_out(bar_metrics),
+        "bars": bars_out(bar_metrics, bar_onsets, bar_tempos, bar_spectral),
         "rhyme_groups": build_rhyme_groups(syllables, word_analyses),
         "rhyme_chains": build_rhyme_chains(syllables),
+        "sections": sections_out(sections),
         "summary": summary_out(summary),
     }
 
@@ -51,3 +58,7 @@ def save(flowmap: dict[str, Any], path: str | Path) -> Path:
     path = Path(path)
     path.write_text(json.dumps(flowmap, ensure_ascii=False, indent=2), encoding="utf-8")
     return path
+
+
+def sections_out(sections: list[Any] | None) -> list[dict[str, Any]]:
+    return [section.__dict__ for section in sections or []]

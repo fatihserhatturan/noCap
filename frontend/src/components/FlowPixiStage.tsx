@@ -166,6 +166,10 @@ function BarTooltip({ tooltip }: { tooltip: BarTooltipState }) {
       <div className="tt-word">{t('tooltip.bar')} {bar.bar_no}</div>
       <div className="tt-row">{t('metrics.density')} <span>{bar.density} syl/beat</span></div>
       <div className="tt-row">{t('metrics.syncopation')} <span>{(bar.syncopation_score * 100).toFixed(0)}%</span></div>
+      <div className="tt-row">{t('tooltip.energy')} <span>{(bar.rms_avg * 100).toFixed(0)}%</span></div>
+      <div className="tt-row">{t('tooltip.onset')} <span>{(bar.onset_strength_avg * 100).toFixed(0)}%</span></div>
+      <div className="tt-row">{t('tooltip.localBpm')} <span>{bar.local_bpm.toFixed(1)}</span></div>
+      <div className="tt-row">{t('tooltip.brightness')} <span>{bar.spectral_centroid_avg.toFixed(0)} Hz</span></div>
       <div className="tt-row">{t('tooltip.timing')} <span>{(bar.timing_variance * 100).toFixed(1)}</span></div>
       <div className="tt-row">{t('tooltip.pocket')} <span>{bar.pocket_offset.toFixed(3)}</span></div>
       <div className="tt-row">{t('tooltip.stressed')} <span>{(bar.stressed_ratio * 100).toFixed(0)}%</span></div>

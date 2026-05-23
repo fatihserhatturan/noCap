@@ -9,6 +9,7 @@ type LegacyFlowMap = {
   bars?: Array<Record<string, any>>;
   rhyme_groups?: FlowMap['rhyme_groups'];
   rhyme_chains?: FlowMap['rhyme_chains'];
+  sections?: Array<Record<string, any>>;
   summary?: Partial<FlowMap['summary']>;
 };
 
@@ -21,6 +22,9 @@ export function normalizeFlowMap(input: LegacyFlowMap): FlowMap {
     confidence: beat.confidence ?? 1,
     downbeat_confidence: beat.downbeat_confidence ?? (beat.beat_no === 1 ? 0.5 : 0),
     source: beat.source ?? 'detected',
+    onset_strength: beat.onset_strength ?? 0,
+    local_bpm: beat.local_bpm ?? 0,
+    tempo_confidence: beat.tempo_confidence ?? 0,
   }));
 
   const syllables = (input.syllables || []).map((syllable, index) => ({
@@ -53,6 +57,16 @@ export function normalizeFlowMap(input: LegacyFlowMap): FlowMap {
     timing_variance: bar.timing_variance ?? 0,
     stressed_on_beat_ratio: bar.stressed_on_beat_ratio ?? bar.stressed_ratio,
     stressed_ratio: bar.stressed_ratio,
+    onset_density: bar.onset_density ?? 0,
+    onset_strength_avg: bar.onset_strength_avg ?? 0,
+    vocal_onset_alignment: bar.vocal_onset_alignment ?? 0,
+    local_bpm: bar.local_bpm ?? 0,
+    tempo_variance: bar.tempo_variance ?? 0,
+    tempo_confidence: bar.tempo_confidence ?? 0,
+    rms_avg: bar.rms_avg ?? 0,
+    spectral_centroid_avg: bar.spectral_centroid_avg ?? 0,
+    spectral_bandwidth_avg: bar.spectral_bandwidth_avg ?? 0,
+    zero_crossing_rate_avg: bar.zero_crossing_rate_avg ?? 0,
   }));
 
   return {
@@ -67,6 +81,22 @@ export function normalizeFlowMap(input: LegacyFlowMap): FlowMap {
     bars,
     rhyme_groups: input.rhyme_groups || [],
     rhyme_chains: input.rhyme_chains || [],
+    sections: (input.sections || []).map((section, index) => ({
+      id: section.id ?? `section_${index + 1}`,
+      label: section.label ?? `Section ${index + 1}`,
+      start_bar: section.start_bar ?? 0,
+      end_bar: section.end_bar ?? 0,
+      bar_count: section.bar_count ?? 0,
+      avg_density: section.avg_density ?? 0,
+      syncopation_score: section.syncopation_score ?? 0,
+      onset_strength_avg: section.onset_strength_avg ?? 0,
+      local_bpm: section.local_bpm ?? 0,
+      tempo_confidence: section.tempo_confidence ?? 0,
+      rms_avg: section.rms_avg ?? 0,
+      spectral_centroid_avg: section.spectral_centroid_avg ?? 0,
+      spectral_bandwidth_avg: section.spectral_bandwidth_avg ?? 0,
+      zero_crossing_rate_avg: section.zero_crossing_rate_avg ?? 0,
+    })),
     summary: {
       avg_density: input.summary?.avg_density ?? 0,
       peak_density: input.summary?.peak_density ?? 0,

@@ -7,7 +7,10 @@ export interface FlowBeat {
   beat_index: number;
   confidence: number;
   downbeat_confidence: number;
-  source: 'detected' | 'synthetic' | 'manual';
+  source: 'detected' | 'synthetic' | 'manual' | 'mix' | 'percussive';
+  onset_strength: number;
+  local_bpm: number;
+  tempo_confidence: number;
 }
 
 export interface FlowWord {
@@ -51,6 +54,16 @@ export interface FlowBar {
   timing_variance: number;
   stressed_on_beat_ratio: number;
   stressed_ratio: number;
+  onset_density: number;
+  onset_strength_avg: number;
+  vocal_onset_alignment: number;
+  local_bpm: number;
+  tempo_variance: number;
+  tempo_confidence: number;
+  rms_avg: number;
+  spectral_centroid_avg: number;
+  spectral_bandwidth_avg: number;
+  zero_crossing_rate_avg: number;
 }
 
 export interface RhymeChain {
@@ -82,6 +95,23 @@ export interface RhymeGroup {
   }>;
 }
 
+export interface FlowSection {
+  id: string;
+  label: string;
+  start_bar: number;
+  end_bar: number;
+  bar_count: number;
+  avg_density: number;
+  syncopation_score: number;
+  onset_strength_avg: number;
+  local_bpm: number;
+  tempo_confidence: number;
+  rms_avg: number;
+  spectral_centroid_avg: number;
+  spectral_bandwidth_avg: number;
+  zero_crossing_rate_avg: number;
+}
+
 export interface FlowMap {
   schema_version: number;
   metadata: {
@@ -98,6 +128,7 @@ export interface FlowMap {
   bars: FlowBar[];
   rhyme_groups: RhymeGroup[];
   rhyme_chains: RhymeChain[];
+  sections: FlowSection[];
   summary: {
     avg_density: number;
     peak_density: number;

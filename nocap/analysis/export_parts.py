@@ -6,7 +6,9 @@ from nocap.analysis.aligner import AlignedSyllable
 from nocap.analysis.flow_metrics import BarMetrics, FlowSummary
 
 
-def beats_out(grid, beat_source: str | None) -> list[dict[str, Any]]:
+def beats_out(grid, beat_source: str | None, beat_onsets=None, beat_tempos=None) -> list[dict[str, Any]]:
+    onset_by_idx = {item.beat_index: item.strength for item in beat_onsets or []}
+    tempo_by_idx = {item.beat_index: item for item in beat_tempos or []}
     return [{
         "time": beat.time,
         "beat_no": beat.beat_no,
@@ -15,6 +17,9 @@ def beats_out(grid, beat_source: str | None) -> list[dict[str, Any]]:
         "confidence": getattr(beat, "confidence", 1.0),
         "downbeat_confidence": getattr(beat, "downbeat_confidence", 0.5 if beat.beat_no == 1 else 0.0),
         "source": beat_source or getattr(beat, "source", "detected"),
+        "onset_strength": onset_by_idx.get(idx, 0.0),
+        "local_bpm": getattr(tempo_by_idx.get(idx), "local_bpm", 0.0),
+        "tempo_confidence": getattr(tempo_by_idx.get(idx), "tempo_confidence", 0.0),
     } for idx, beat in enumerate(grid.beats)]
 
 
@@ -40,7 +45,10 @@ def syllables_out(syllables: list[AlignedSyllable]) -> list[dict[str, Any]]:
     } for syl in syllables]
 
 
-def bars_out(bar_metrics: list[BarMetrics]) -> list[dict[str, Any]]:
+def bars_out(bar_metrics: list[BarMetrics], bar_onsets=None, bar_tempos=None, bar_spectral=None) -> list[dict[str, Any]]:
+    onset_by_bar = {item.bar_no: item for item in bar_onsets or []}
+    tempo_by_bar = {item.bar_no: item for item in bar_tempos or []}
+    spectral_by_bar = {item.bar_no: item for item in bar_spectral or []}
     return [{
         "bar_no": bar.bar_no,
         "syllable_count": bar.syllable_count,
@@ -51,6 +59,16 @@ def bars_out(bar_metrics: list[BarMetrics]) -> list[dict[str, Any]]:
         "timing_variance": bar.timing_variance,
         "stressed_on_beat_ratio": bar.stressed_on_beat_ratio,
         "stressed_ratio": bar.stressed_ratio,
+        "onset_density": getattr(onset_by_bar.get(bar.bar_no), "onset_density", 0.0),
+        "onset_strength_avg": getattr(onset_by_bar.get(bar.bar_no), "onset_strength_avg", 0.0),
+        "vocal_onset_alignment": getattr(onset_by_bar.get(bar.bar_no), "vocal_onset_alignment", 0.0),
+        "local_bpm": getattr(tempo_by_bar.get(bar.bar_no), "local_bpm", 0.0),
+        "tempo_variance": getattr(tempo_by_bar.get(bar.bar_no), "tempo_variance", 0.0),
+        "tempo_confidence": getattr(tempo_by_bar.get(bar.bar_no), "tempo_confidence", 0.0),
+        "rms_avg": getattr(spectral_by_bar.get(bar.bar_no), "rms_avg", 0.0),
+        "spectral_centroid_avg": getattr(spectral_by_bar.get(bar.bar_no), "spectral_centroid_avg", 0.0),
+        "spectral_bandwidth_avg": getattr(spectral_by_bar.get(bar.bar_no), "spectral_bandwidth_avg", 0.0),
+        "zero_crossing_rate_avg": getattr(spectral_by_bar.get(bar.bar_no), "zero_crossing_rate_avg", 0.0),
     } for bar in bar_metrics]
 
 

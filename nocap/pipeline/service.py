@@ -4,6 +4,7 @@ from pathlib import Path
 
 from nocap.i18n import msg
 
+from .audio_context import compute_context_metrics
 from .models import AnalysisOptions, AnalysisResult, ProgressEvent, ProgressReporter
 from .words import analyze_lines, analyze_transcript_words
 
@@ -52,6 +53,7 @@ def analyze_track(
         audio_path=str(audio_path.resolve()),
         duration=audio_data.duration,
         transcript_words=transcript_words,
+        audio_data=audio_data,
         reporter=reporter,
     )
     return AnalysisResult(flowmap, audio_data, transcript_words, vocals_audio)
@@ -80,6 +82,7 @@ def analyze_lyrics(
         audio_path=None,
         duration=duration,
         transcript_words=None,
+        audio_data=None,
         reporter=reporter,
     )
     return AnalysisResult(flowmap, None, None)
@@ -120,7 +123,7 @@ def _transcribe(audio_data, options: AnalysisOptions, reporter: ProgressReporter
     return words_to_timed_lines(tr.words), tr.words
 
 
-def _finish(*, title, grid, lines, audio_path, duration, transcript_words, reporter):
+def _finish(*, title, grid, lines, audio_path, duration, transcript_words, audio_data, reporter):
     if not lines:
         raise ValueError(msg("pipeline.nothing"))
     _emit(reporter, "align", msg("pipeline.analyzingFlow"))
@@ -137,6 +140,7 @@ def _finish(*, title, grid, lines, audio_path, duration, transcript_words, repor
     )
     bars = compute_bar_metrics(aligned, grid)
     summary = compute_summary(bars, aligned)
+    context = compute_context_metrics(audio_data, grid, bars)
     _emit(reporter, "align", msg("pipeline.syllablesMapped", count=len(aligned)), True)
     return build_flowmap(
         title=title,
@@ -149,6 +153,12 @@ def _finish(*, title, grid, lines, audio_path, duration, transcript_words, repor
         transcript_words=transcript_words,
         word_analyses=all_words,
         analysis_mode="audio_whisper_word" if transcript_words else "lyrics",
+        beat_onsets=context.beat_onsets,
+        bar_onsets=context.bar_onsets,
+        beat_tempos=context.beat_tempos,
+        bar_tempos=context.bar_tempos,
+        bar_spectral=context.bar_spectral,
+        sections=context.sections,
     )
 
 

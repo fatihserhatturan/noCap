@@ -21,9 +21,7 @@ function drawBarPlayButton(layer: Graphics, flowmap: FlowMap, barNo: number) {
   if (rowIndex < 0) return;
   const centerX = barPlayCenterX();
   const centerY = FLOW_DIMS.headerH + rowIndex * FLOW_DIMS.barH + FLOW_DIMS.barH / 2;
-  layer.circle(centerX, centerY, 13).fill({ color: 0xff3d00, alpha: 0.08 }).stroke({ color: 0xff3d00, width: 1.2, alpha: 0.82 });
-  layer.circle(centerX, centerY, 8.5).stroke({ color: 0xffffff, width: 0.8, alpha: 0.28 });
   layer.moveTo(centerX - 3, centerY - 5).lineTo(centerX + 4, centerY).lineTo(centerX - 3, centerY + 5).closePath()
     .stroke({ color: 0xffffff, width: 1.4, alpha: 0.9 });
-  layer.poly([centerX - 3.4, centerY - 5.4, centerX - 3.4, centerY + 5.4, centerX + 4.3, centerY]).fill({ color: 0xffffff, alpha: 0.035 });
+  layer.poly([centerX - 3.4, centerY - 5.4, centerX - 3.4, centerY + 5.4, centerX + 4.3, centerY]).fill({ color: 0xffffff, alpha: 0.18 });
 }

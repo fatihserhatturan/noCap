@@ -6,6 +6,8 @@
   min-width: 0;
 }
 .details-panel-wide { grid-column: span 1; }
+.section-panel { grid-column: 1 / -1; }
+.bar-data-panel { grid-column: 1 / -1; }
 .details-panel-head {
   display: flex;
   align-items: start;
@@ -114,6 +116,18 @@
   letter-spacing: 0.08em;
 }
 .bar-data-head span:not(:first-child) { color: var(--muted); }
+.energy-section-table { margin-bottom: 12px; }
+.energy-panel { grid-column: 1 / -1; }
+.energy-row {
+  grid-template-columns: 92px repeat(4, minmax(86px, 1fr));
+  min-width: 540px;
+}
+.energy-bars {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 12px;
+}
+.energy-bar-line { grid-template-columns: 54px 1fr 44px; }
 
 .metrics-list { display: flex; flex-direction: column; gap: 9px; }
 .m-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 3px; color: var(--muted); font-size: 10px; }
