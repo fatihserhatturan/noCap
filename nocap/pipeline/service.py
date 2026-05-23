@@ -1,0 +1,155 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from .models import AnalysisOptions, AnalysisResult, ProgressEvent, ProgressReporter
+from .words import analyze_lines, analyze_transcript_words
+
+
+def analyze_track(
+    audio_path: Path,
+    options: AnalysisOptions,
+    reporter: ProgressReporter | None = None,
+) -> AnalysisResult:
+    from nocap.audio.loader import load
+
+    _emit(reporter, "load", f"Loading audio: {audio_path}")
+    audio_data = load(audio_path)
+    _emit(reporter, "load", f"{audio_data.duration:.1f}s loaded", True)
+    transcription_audio = audio_data
+    vocals_audio = None
+
+    if options.separate:
+        from nocap.audio.separator import assess_vocal_stem, is_available, separate
+        if is_available():
+            _emit(reporter, "transcribe", "Isolating vocals with Demucs...")
+            vocals = separate(audio_data)
+            stem_quality = assess_vocal_stem(vocals, audio_data)
+            if stem_quality.usable:
+                transcription_audio = vocals
+                vocals_audio = vocals
+            else:
+                _emit(reporter, "transcribe", f"Vocals skipped: {stem_quality.reason}; using original mix...")
+        else:
+            _emit(reporter, "transcribe", "Demucs not installed - skipping vocal separation.")
+
+    grid = _build_grid(audio_data, options, reporter)
+    transcript_words = None
+    if options.lyrics is not None:
+        from nocap.text.parser import parse
+        _emit(reporter, "transcribe", f"Parsing lyrics: {options.lyrics}")
+        lines = parse(options.lyrics)
+        _emit(reporter, "transcribe", f"{len(lines)} lines parsed.", True)
+    else:
+        lines, transcript_words = _transcribe(transcription_audio, options, reporter)
+
+    flowmap = _finish(
+        title=options.title or audio_path.stem,
+        grid=grid,
+        lines=lines,
+        audio_path=str(audio_path.resolve()),
+        duration=audio_data.duration,
+        transcript_words=transcript_words,
+        reporter=reporter,
+    )
+    return AnalysisResult(flowmap, audio_data, transcript_words, vocals_audio)
+
+
+def analyze_lyrics(
+    lyrics_path: Path,
+    options: AnalysisOptions,
+    reporter: ProgressReporter | None = None,
+) -> AnalysisResult:
+    if options.bpm is None:
+        raise ValueError("--bpm is required when no audio file is provided.")
+    from nocap.audio.beat_tracker import build_from_bpm
+    from nocap.text.parser import parse
+
+    _emit(reporter, "transcribe", f"Parsing lyrics: {lyrics_path}")
+    lines = parse(lyrics_path)
+    max_ts = max((line.start for line in lines if line.start >= 0), default=-1)
+    duration = max_ts + 30.0 if max_ts >= 0 else len(lines) * 3.0
+    grid = build_from_bpm(options.bpm, duration)
+    grid = _apply_offsets(grid, options, reporter)
+    flowmap = _finish(
+        title=options.title or lyrics_path.stem,
+        grid=grid,
+        lines=lines,
+        audio_path=None,
+        duration=duration,
+        transcript_words=None,
+        reporter=reporter,
+    )
+    return AnalysisResult(flowmap, None, None)
+
+
+def _build_grid(audio_data, options: AnalysisOptions, reporter: ProgressReporter | None):
+    if options.bpm is not None:
+        from nocap.audio.beat_tracker import build_from_bpm
+        _emit(reporter, "beat", f"Using forced BPM: {options.bpm}")
+        grid = build_from_bpm(options.bpm, audio_data.duration)
+    else:
+        from nocap.audio.beat_tracker import track
+        _emit(reporter, "beat", "Detecting beats...")
+        grid = track(audio_data)
+        _emit(reporter, "beat", f"BPM: {grid.bpm:.1f}", True)
+    return _apply_offsets(grid, options, reporter)
+
+
+def _apply_offsets(grid, options: AnalysisOptions, reporter: ProgressReporter | None):
+    if options.downbeat_offset:
+        from nocap.audio.beat_tracker import apply_downbeat_offset
+        _emit(reporter, "beat", f"Applying manual downbeat offset: {options.downbeat_offset} beat(s)")
+        grid = apply_downbeat_offset(grid, options.downbeat_offset)
+    if options.bar_offset:
+        from nocap.audio.beat_tracker import apply_bar_offset
+        _emit(reporter, "beat", f"Applying manual bar offset: {options.bar_offset} bar(s)")
+        grid = apply_bar_offset(grid, options.bar_offset)
+    return grid
+
+
+def _transcribe(audio_data, options: AnalysisOptions, reporter: ProgressReporter | None):
+    from nocap.audio.transcriber import require_word_timestamps, transcribe, words_to_timed_lines
+
+    _emit(reporter, "transcribe", f"Loading Whisper {options.whisper_model}...")
+    tr = transcribe(audio_data, model_name=options.whisper_model, language=options.language)
+    require_word_timestamps(tr)
+    _emit(reporter, "transcribe", f"Language: {tr.language} - {len(tr.words)} words", True)
+    return words_to_timed_lines(tr.words), tr.words
+
+
+def _finish(*, title, grid, lines, audio_path, duration, transcript_words, reporter):
+    if not lines:
+        raise ValueError("Nothing to analyze - provide a lyrics file or an audio file.")
+    _emit(reporter, "align", "Analyzing flow...")
+    all_words = analyze_transcript_words(transcript_words) if transcript_words else analyze_lines(lines)
+    from nocap.analysis.aligner import align, align_words
+    from nocap.analysis.exporter import build_flowmap
+    from nocap.analysis.flow_metrics import compute_bar_metrics, compute_summary
+    from nocap.text.rhyme import detect
+
+    rhyme_labels = detect(all_words)
+    aligned = (
+        align_words(transcript_words, grid, rhyme_labels, all_words)
+        if transcript_words else align(lines, grid, rhyme_labels, all_words)
+    )
+    bars = compute_bar_metrics(aligned, grid)
+    summary = compute_summary(bars, aligned)
+    _emit(reporter, "align", f"{len(aligned)} syllables mapped", True)
+    return build_flowmap(
+        title=title,
+        grid=grid,
+        syllables=aligned,
+        bar_metrics=bars,
+        summary=summary,
+        audio_path=audio_path,
+        duration=duration,
+        transcript_words=transcript_words,
+        word_analyses=all_words,
+        analysis_mode="audio_whisper_word" if transcript_words else "lyrics",
+    )
+
+
+def _emit(reporter: ProgressReporter | None, step: str, message: str, done: bool = False) -> None:
+    if reporter is not None:
+        reporter(ProgressEvent(step, message, done))

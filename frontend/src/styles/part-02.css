@@ -1,0 +1,175 @@
+.analysis-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.62);
+}
+.analysis-modal {
+  width: min(520px, 100%);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(17, 17, 17, 0.98);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+  padding: 18px;
+}
+.analysis-modal-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.analysis-modal-head h2 {
+  margin: 0 0 5px;
+  color: #eeeeee;
+  font-size: 16px;
+  letter-spacing: 0;
+}
+.analysis-modal-head p {
+  margin: 0;
+  color: var(--muted);
+  word-break: break-word;
+}
+.confirm-modal {
+  width: min(390px, 100%);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(17, 17, 17, 0.98);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+  padding: 20px;
+}
+.confirm-icon {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 61, 0, 0.65);
+  border-radius: 6px;
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+}
+.confirm-modal h2 {
+  margin: 0 0 8px;
+  color: #eeeeee;
+  font-size: 16px;
+  letter-spacing: 0;
+}
+.confirm-modal p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.confirm-modal p b {
+  color: #eeeeee;
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+.danger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 61, 0, 0.65);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--accent);
+  padding: 6px 11px;
+  cursor: pointer;
+}
+.danger-btn:hover {
+  background: rgba(255, 61, 0, 0.09);
+  color: #eeeeee;
+}
+
+.drop-zone {
+  width: 100%;
+  max-width: 480px;
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: 52px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.drop-zone.drag-over {
+  border-color: var(--accent);
+  background: rgba(255, 61, 0, 0.04);
+}
+.drop-zone svg { color: var(--muted); }
+.drop-label { font-size: 16px; color: #d5d5d5; font-weight: 700; }
+.drop-sub { color: var(--muted); font-size: 11px; }
+.select-btn {
+  margin-top: 8px;
+  background: var(--accent);
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 9px 22px;
+  font-weight: 700;
+}
+
+.analysis-options {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  justify-content: center;
+}
+.opt-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.opt-field select {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  padding: 5px 8px;
+}
+
+.progress-panel {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.progress-filename { text-align: center; color: #eeeeee; font-weight: 700; font-size: 14px; }
+.steps { display: flex; flex-direction: column; gap: 14px; }
+.step { display: flex; gap: 12px; align-items: flex-start; }
+.step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 2px;
+  background: var(--border);
+}
+.step.active .step-dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.step.done .step-dot { background: var(--green); }
+.step-label { color: var(--muted); font-size: 12px; }
+.step.active .step-label { color: #eeeeee; }
+.step.done .step-label { color: var(--green); }
+.step-body { display: flex; flex-direction: column; gap: 2px; }
+.step-msg { color: var(--muted); min-height: 14px; font-size: 11px; }
+.progress-bar-wrap { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: var(--accent); transition: width 0.25s ease; }
+.error-panel {
+  max-width: 680px;
+  white-space: pre-wrap;
+  color: #ef5350;
+  background: rgba(239, 83, 80, 0.08);
+  border: 1px solid rgba(239, 83, 80, 0.2);
+  border-radius: 6px;
+  padding: 10px 14px;
+}

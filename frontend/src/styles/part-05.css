@@ -1,0 +1,84 @@
+.rh-item {
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 7px;
+  cursor: pointer;
+  text-align: left;
+}
+.rh-item:hover, .rh-item.rh-active { background: var(--bg3); border-color: var(--border); }
+.rh-swatch { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; margin-top: 3px; }
+.rh-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.rh-top { display: flex; justify-content: space-between; align-items: baseline; }
+.rh-words { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+
+.player-bar {
+  height: var(--player-h);
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 20px;
+}
+.play-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--accent);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.play-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+.timeline {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  position: relative;
+  cursor: pointer;
+}
+.timeline-progress {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  border-radius: 2px;
+}
+.timeline-cursor {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffffff;
+  transform: translate(-50%, -50%);
+}
+.time-display { min-width: 76px; text-align: right; color: var(--muted); font-size: 10px; }
+
+.tooltip {
+  position: fixed;
+  z-index: 999;
+  pointer-events: none;
+  background: rgba(12, 12, 12, 0.96);
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 8px 11px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  line-height: 1.8;
+  white-space: nowrap;
+}
+.tt-word { color: #ffb0b0; font-size: 14px; font-weight: 800; margin-bottom: 3px; }
+.tt-row { color: var(--muted); }
+.tt-row span { color: #cccccc; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
