@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { FlowBar, FlowMap } from '../types';
+import { t } from '../i18n';
 
 type CompareMetric = 'density' | 'syncopation_score' | 'stressed_ratio' | 'syllable_count' | 'pocket_offset' | 'timing_variance';
 
 const compareOptions: Array<{ key: CompareMetric; label: string; format: (value: number) => string }> = [
-  { key: 'density', label: 'Density', format: (value) => value.toFixed(2) },
-  { key: 'syncopation_score', label: 'Syncopation', format: (value) => `${(value * 100).toFixed(0)}%` },
-  { key: 'stressed_ratio', label: 'Stress', format: (value) => `${(value * 100).toFixed(0)}%` },
-  { key: 'syllable_count', label: 'Syllables', format: (value) => value.toFixed(0) },
-  { key: 'pocket_offset', label: 'Pocket', format: (value) => value.toFixed(3) },
-  { key: 'timing_variance', label: 'Timing', format: (value) => (value * 100).toFixed(1) },
+  { key: 'density', label: t('metrics.density'), format: (value) => value.toFixed(2) },
+  { key: 'syncopation_score', label: t('metrics.syncopation'), format: (value) => `${(value * 100).toFixed(0)}%` },
+  { key: 'stressed_ratio', label: t('metrics.stress'), format: (value) => `${(value * 100).toFixed(0)}%` },
+  { key: 'syllable_count', label: t('details.syllableCount'), format: (value) => value.toFixed(0) },
+  { key: 'pocket_offset', label: t('metrics.pocket'), format: (value) => value.toFixed(3) },
+  { key: 'timing_variance', label: t('metrics.timing'), format: (value) => (value * 100).toFixed(1) },
 ];
 
 export function DetailsScreen({
@@ -32,39 +33,39 @@ export function DetailsScreen({
   }, [flowmap, compareMetric]);
   const metricCards = [
     {
-      label: 'Density',
+      label: t('metrics.density'),
       value: `${flowmap.summary.avg_density.toFixed(2)} syl/beat`,
-      detail: `peak ${flowmap.summary.peak_density.toFixed(2)} · variation ${(flowmap.summary.density_variation * 100).toFixed(0)}%`,
+      detail: `${t('details.peak')} ${flowmap.summary.peak_density.toFixed(2)} · ${t('details.variation')} ${(flowmap.summary.density_variation * 100).toFixed(0)}%`,
       pct: flowmap.summary.avg_density / Math.max(flowmap.summary.peak_density, 1),
     },
     {
-      label: 'Syncopation',
+      label: t('metrics.syncopation'),
       value: `${(flowmap.summary.syncopation_score * 100).toFixed(0)}%`,
-      detail: `bar avg ${(barStats.syncAvg * 100).toFixed(0)}% · max ${(barStats.syncMax * 100).toFixed(0)}%`,
+      detail: `${t('details.barAvg')} ${(barStats.syncAvg * 100).toFixed(0)}% · ${t('details.max')} ${(barStats.syncMax * 100).toFixed(0)}%`,
       pct: flowmap.summary.syncopation_score,
     },
     {
-      label: 'Pocket',
+      label: t('metrics.pocket'),
       value: `${(flowmap.summary.pocket_score * 100).toFixed(0)}%`,
-      detail: `avg offset ${barStats.pocketAvg.toFixed(3)} · range ${barStats.pocketMin.toFixed(3)} / ${barStats.pocketMax.toFixed(3)}`,
+      detail: `${t('details.avgOffset')} ${barStats.pocketAvg.toFixed(3)} · ${t('details.range')} ${barStats.pocketMin.toFixed(3)} / ${barStats.pocketMax.toFixed(3)}`,
       pct: flowmap.summary.pocket_score,
     },
     {
-      label: 'Timing Quality',
+      label: t('metrics.timingQuality'),
       value: `${(flowmap.summary.timing_quality_avg * 100).toFixed(0)}%`,
-      detail: `variance avg ${(barStats.timingAvg * 100).toFixed(1)} · max ${(barStats.timingMax * 100).toFixed(1)}`,
+      detail: `${t('details.varianceAvg')} ${(barStats.timingAvg * 100).toFixed(1)} · ${t('details.max')} ${(barStats.timingMax * 100).toFixed(1)}`,
       pct: flowmap.summary.timing_quality_avg,
     },
     {
-      label: 'Delivery',
+      label: t('metrics.delivery'),
       value: `${(flowmap.summary.delivery_consistency * 100).toFixed(0)}%`,
       detail: `consistency ${(flowmap.summary.consistency * 100).toFixed(0)}% · ${flowmap.bars.length} bars`,
       pct: flowmap.summary.delivery_consistency,
     },
     {
-      label: 'Stress Placement',
+      label: t('details.stressPlacement'),
       value: `${(barStats.stressedOnBeatAvg * 100).toFixed(0)}%`,
-      detail: `stressed ratio avg ${(barStats.stressAvg * 100).toFixed(0)}%`,
+      detail: `${t('details.stressedRatioAvg')} ${(barStats.stressAvg * 100).toFixed(0)}%`,
       pct: barStats.stressedOnBeatAvg,
     },
   ];
@@ -73,15 +74,15 @@ export function DetailsScreen({
     <main className="details-screen">
       <section className="details-head">
         <div>
-          <h1>Details</h1>
-          <p>{flowmap.metadata.title} · {flowmap.metadata.bpm.toFixed(1)} BPM · {flowmap.bars.length} bars</p>
+          <h1>{t('details.title')}</h1>
+          <p>{t('details.header', { title: flowmap.metadata.title, bpm: flowmap.metadata.bpm.toFixed(1), bars: flowmap.bars.length })}</p>
         </div>
         <div className="details-head-right">
           {actions && <div className="details-actions">{actions}</div>}
           <div className="details-kpis">
-            <span><b>{flowmap.syllables.length}</b> syllables</span>
-            <span><b>{flowmap.words.length}</b> words</span>
-            <span><b>{flowmap.rhyme_groups.length || flowmap.rhyme_chains.length}</b> rhyme groups</span>
+            <span><b>{flowmap.syllables.length}</b> {t('details.syllables')}</span>
+            <span><b>{flowmap.words.length}</b> {t('details.words')}</span>
+            <span><b>{flowmap.rhyme_groups.length || flowmap.rhyme_chains.length}</b> {t('details.rhymeGroups')}</span>
           </div>
         </div>
       </section>
@@ -102,7 +103,7 @@ export function DetailsScreen({
       <section className="details-grid">
         <div className="details-panel details-panel-wide">
           <div className="details-panel-head">
-            <h3>Bar Compare</h3>
+            <h3>{t('metrics.barCompare')}</h3>
             <div className="details-segmented">
               {compareOptions.map((item) => (
                 <button
@@ -118,7 +119,7 @@ export function DetailsScreen({
           <div className="bar-compare-table">
             {comparedBars.slice(0, 24).map(({ bar, pct }) => (
               <div key={bar.bar_no} className="bar-compare-line">
-                <span>Bar {bar.bar_no}</span>
+                <span>{t('details.bar')} {bar.bar_no}</span>
                 <div className="bar-compare-track">
                   <div style={{ width: `${Math.max(3, pct * 100)}%` }} />
                 </div>
@@ -129,32 +130,32 @@ export function DetailsScreen({
         </div>
 
         <div className="details-panel">
-          <h3>Flow Metrics</h3>
+          <h3>{t('metrics.flow')}</h3>
           <dl className="details-list">
-            <div><dt>Avg Density</dt><dd>{flowmap.summary.avg_density.toFixed(2)}</dd></div>
-            <div><dt>Peak Density</dt><dd>{flowmap.summary.peak_density.toFixed(2)}</dd></div>
-            <div><dt>Density Variation</dt><dd>{(flowmap.summary.density_variation * 100).toFixed(0)}%</dd></div>
-            <div><dt>Consistency</dt><dd>{(flowmap.summary.consistency * 100).toFixed(0)}%</dd></div>
-            <div><dt>Delivery</dt><dd>{(flowmap.summary.delivery_consistency * 100).toFixed(0)}%</dd></div>
-            <div><dt>Rhyme Chain Avg</dt><dd>{flowmap.summary.rhyme_chain_avg.toFixed(1)}</dd></div>
+            <div><dt>{t('metrics.avgDensity')}</dt><dd>{flowmap.summary.avg_density.toFixed(2)}</dd></div>
+            <div><dt>{t('metrics.peakDensity')}</dt><dd>{flowmap.summary.peak_density.toFixed(2)}</dd></div>
+            <div><dt>{t('details.densityVariation')}</dt><dd>{(flowmap.summary.density_variation * 100).toFixed(0)}%</dd></div>
+            <div><dt>{t('metrics.consistency')}</dt><dd>{(flowmap.summary.consistency * 100).toFixed(0)}%</dd></div>
+            <div><dt>{t('metrics.delivery')}</dt><dd>{(flowmap.summary.delivery_consistency * 100).toFixed(0)}%</dd></div>
+            <div><dt>{t('details.rhymeChainAvg')}</dt><dd>{flowmap.summary.rhyme_chain_avg.toFixed(1)}</dd></div>
           </dl>
         </div>
 
         <div className="details-panel details-panel-wide">
-          <h3>Bar Data</h3>
+          <h3>{t('details.barData')}</h3>
           <div className="bar-data-table">
             <div className="bar-data-row bar-data-head">
-              <span>Bar</span>
-              <span>Density</span>
-              <span>Sync</span>
-              <span>Pocket</span>
-              <span>Timing</span>
-              <span>Stress</span>
-              <span>Syllables</span>
+              <span>{t('details.bar')}</span>
+              <span>{t('metrics.density')}</span>
+              <span>{t('metrics.sync')}</span>
+              <span>{t('metrics.pocket')}</span>
+              <span>{t('metrics.timing')}</span>
+              <span>{t('metrics.stress')}</span>
+              <span>{t('details.syllableCount')}</span>
             </div>
             {flowmap.bars.map((bar) => (
               <div key={bar.bar_no} className="bar-data-row">
-                <span>Bar {bar.bar_no}</span>
+                <span>{t('details.bar')} {bar.bar_no}</span>
                 <span>{bar.density.toFixed(2)}</span>
                 <span>{(bar.syncopation_score * 100).toFixed(0)}%</span>
                 <span>{bar.pocket_offset.toFixed(3)}</span>

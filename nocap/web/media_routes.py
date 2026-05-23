@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from nocap.i18n import msg
+
 from .state import SessionState
 
 
@@ -39,7 +41,7 @@ def send_index(frontend_dist: Path):
     if index_path.exists():
         return send_file(str(index_path))
     return (
-        "Frontend build not found. Run `npm run build` in frontend/ for `nocap serve`, or use `nocap dev` during development.",
+        msg("web.noFrontendBuild"),
         503,
         {"Content-Type": "text/plain; charset=utf-8"},
     )

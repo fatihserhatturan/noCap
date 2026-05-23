@@ -12,6 +12,7 @@ import { SourcePanel } from './components/SourcePanel';
 import { useAnalysis } from './hooks/useAnalysis';
 import { useLibrary } from './hooks/useLibrary';
 import { useViewerState } from './hooks/useViewerState';
+import { t } from './i18n';
 import { sampleFlowmap } from './sampleFlowmap';
 import type { FlowMap } from './types';
 import logoUrl from '../../source/logo-transparent.png';
@@ -73,7 +74,7 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="top-bar">
-        <button className="brand" onClick={reset} aria-label="noCap home">
+        <button className="brand" onClick={reset} aria-label={t('app.brandHome')}>
           <img src={logoUrl} alt="noCap" />
         </button>
         <div className="track-info">
@@ -108,13 +109,13 @@ function TopActions({ mode, setMode, reset }: {
   return (
     <div className="top-actions">
       <button className={`ghost-btn nav-view-btn ${mode === 'viewer' ? 'nav-view-active' : ''}`} onClick={() => setMode('viewer')}>
-        <Route size={15} /> Flow
+        <Route size={15} /> {t('app.nav.flow')}
       </button>
       <button className={`ghost-btn nav-view-btn ${mode === 'details' ? 'nav-view-active' : ''}`} onClick={() => setMode('details')}>
-        <BarChart3 size={15} /> Details
+        <BarChart3 size={15} /> {t('app.nav.details')}
       </button>
       <button className="ghost-btn" onClick={reset}>
-        <Library size={15} /> Library
+        <Library size={15} /> {t('app.nav.library')}
       </button>
     </div>
   );

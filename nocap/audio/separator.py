@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from nocap.i18n import msg
 from nocap.audio.loader import AudioData
 
 
@@ -21,7 +22,7 @@ def separate(audio: AudioData, model_name: str = "htdemucs") -> AudioData:
         from demucs.pretrained import get_model
         from demucs.apply import apply_model
     except ImportError as e:
-        raise ImportError("demucs is required: pip install demucs") from e
+        raise ImportError(msg("separator.needDemucs")) from e
 
     import numpy as np
     import librosa
@@ -66,7 +67,7 @@ def assess_vocal_stem(vocals: AudioData, mix: AudioData) -> StemQuality:
     mix_y = np.asarray(mix.y, dtype=np.float32)
     vocals_y = np.asarray(vocals.y, dtype=np.float32)
     if mix_y.size == 0 or vocals_y.size == 0:
-        return StemQuality(False, 0.0, 0.0, 0.0, "empty stem")
+        return StemQuality(False, 0.0, 0.0, 0.0, msg("separator.emptyStem"))
 
     mix_rms = float(np.sqrt(np.mean(np.square(mix_y))) + eps)
     vocal_rms = float(np.sqrt(np.mean(np.square(vocals_y))) + eps)
@@ -80,11 +81,11 @@ def assess_vocal_stem(vocals: AudioData, mix: AudioData) -> StemQuality:
     active_ratio = _active_frame_ratio(vocals_y, frame, threshold=max(vocal_rms * 0.25, mix_rms * 0.015))
 
     if vocal_rms_ratio < 0.015:
-        return StemQuality(False, vocal_rms_ratio, active_ratio, peak_ratio, "vocal stem is too quiet")
+        return StemQuality(False, vocal_rms_ratio, active_ratio, peak_ratio, msg("separator.tooQuiet"))
     if active_ratio < 0.015:
-        return StemQuality(False, vocal_rms_ratio, active_ratio, peak_ratio, "vocal stem has too little active audio")
+        return StemQuality(False, vocal_rms_ratio, active_ratio, peak_ratio, msg("separator.tooInactive"))
     if peak_ratio > 2.5 and active_ratio < 0.05:
-        return StemQuality(False, vocal_rms_ratio, active_ratio, peak_ratio, "vocal stem appears spiky")
+        return StemQuality(False, vocal_rms_ratio, active_ratio, peak_ratio, msg("separator.spiky"))
 
     return StemQuality(True, vocal_rms_ratio, active_ratio, peak_ratio)
 

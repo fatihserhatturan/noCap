@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from nocap.i18n import msg
+
 from .loader import AudioData
 
 
@@ -29,7 +31,7 @@ def track(audio: AudioData, time_signature: int = 4) -> BeatGrid:
     try:
         import librosa
     except ImportError as e:
-        raise ImportError("librosa is required: pip install librosa") from e
+        raise ImportError(msg("audio.needLibrosa")) from e
 
     tempo, beat_frames = librosa.beat.beat_track(
         y=audio.y, sr=audio.sr, units="frames"

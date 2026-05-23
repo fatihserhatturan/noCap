@@ -10,22 +10,24 @@ from pathlib import Path
 
 import click
 
+from nocap.i18n import msg
+
 
 def run_dev(backend_port: int, frontend_port: int, no_open: bool) -> None:
     root = Path(__file__).resolve().parents[1]
     frontend_dir = root / "frontend"
     if not frontend_dir.exists():
-        raise click.ClickException(f"Frontend directory not found: {frontend_dir}")
+        raise click.ClickException(msg("dev.noFrontend", path=frontend_dir))
 
     npm_cmd = _find_executable("npm")
     vite_cmd = frontend_dir / "node_modules" / ".bin" / "vite"
     if npm_cmd is None:
-        raise click.ClickException("npm is required to install frontend dependencies.")
+        raise click.ClickException(msg("dev.needNpm"))
     if not (frontend_dir / "node_modules").exists():
-        click.echo("  Installing frontend dependencies...")
+        click.echo(msg("dev.installing"))
         subprocess.run([npm_cmd, "install"], cwd=frontend_dir, check=True)
     if not vite_cmd.exists():
-        raise click.ClickException("Vite was not found in frontend/node_modules. Run `npm install` in frontend/.")
+        raise click.ClickException(msg("dev.noVite"))
 
     _ensure_port("Backend", backend_port)
     _ensure_port("Frontend", frontend_port)
@@ -38,12 +40,12 @@ def run_dev(backend_port: int, frontend_port: int, no_open: bool) -> None:
             time.sleep(1.0)
             _raise_if_any_exited(processes)
             webbrowser.open(f"http://localhost:{frontend_port}")
-        click.echo("  noCap dev is running. Press Ctrl+C to stop both servers.")
+        click.echo(msg("dev.running"))
         while True:
             _raise_if_any_exited(processes)
             time.sleep(0.5)
     except KeyboardInterrupt:
-        click.echo("\n  Stopping noCap dev servers...")
+        click.echo(msg("dev.stopping"))
     finally:
         _stop(processes)
 
@@ -51,7 +53,7 @@ def run_dev(backend_port: int, frontend_port: int, no_open: bool) -> None:
 def _start_backend(root: Path, port: int) -> subprocess.Popen:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(root) + os.pathsep + env.get("PYTHONPATH", "")
-    click.echo(f"  Starting backend API on http://localhost:{port} ...")
+    click.echo(msg("dev.startBackend", port=port))
     return subprocess.Popen([
         sys.executable,
         "-c",
@@ -64,14 +66,14 @@ def _start_frontend(frontend_dir: Path, port: int, backend_port: int, vite_cmd: 
     env["VITE_NOCAP_API_URL"] = f"http://localhost:{backend_port}"
     env.pop("INIT_CWD", None)
     env.pop("NODE_PATH", None)
-    click.echo(f"  Starting frontend on http://localhost:{port} ...")
+    click.echo(msg("dev.startFrontend", port=port))
     return subprocess.Popen([str(vite_cmd), "--host", "127.0.0.1", "--port", str(port), "--strictPort"], cwd=frontend_dir, env=env)
 
 
 def _ensure_port(label: str, port: int) -> None:
     if not _port_available("127.0.0.1", port):
         raise click.ClickException(
-            f"{label} port {port} is already in use. Stop the old server or run with --{label.lower()}-port {port + 1}."
+            msg("dev.portBusy", label=label, port=port, option=label.lower(), next_port=port + 1)
         )
 
 
@@ -95,7 +97,7 @@ def _raise_if_any_exited(processes: list[subprocess.Popen]) -> None:
     for proc in processes:
         code = proc.poll()
         if code is not None:
-            raise click.ClickException(f"A dev server exited with code {code}.")
+            raise click.ClickException(msg("dev.exited", code=code))
 
 
 def _port_available(host: str, port: int) -> bool:

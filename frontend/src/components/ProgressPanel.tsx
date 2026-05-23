@@ -1,10 +1,11 @@
 import type { StepId, StepState } from '../types';
+import { t } from '../i18n';
 
 const steps: Array<{ id: StepId; label: string; pct: number }> = [
-  { id: 'load', label: 'Loading audio', pct: 15 },
-  { id: 'beat', label: 'Detecting beats', pct: 35 },
-  { id: 'transcribe', label: 'Transcribing with Whisper', pct: 80 },
-  { id: 'align', label: 'Building flow map', pct: 100 },
+  { id: 'load', label: t('progress.load'), pct: 15 },
+  { id: 'beat', label: t('progress.beat'), pct: 35 },
+  { id: 'transcribe', label: t('progress.transcribe'), pct: 80 },
+  { id: 'align', label: t('progress.align'), pct: 100 },
 ];
 
 export function ProgressPanel({

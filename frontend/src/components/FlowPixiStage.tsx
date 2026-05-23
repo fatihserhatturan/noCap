@@ -8,6 +8,7 @@ import { getPixiCanvas, resizePixi, safeDestroyPixiApp } from '../flow/pixi/pixi
 import { drawPlayhead } from '../flow/pixi/playhead';
 import { drawScene } from '../flow/pixi/scene';
 import { makeHandlers, type BarTooltipState, type StageCallbacks, type StageHandlers, type TooltipState } from '../flow/pixi/handlers';
+import { t } from '../i18n';
 
 interface Props {
   flowmap: FlowMap;
@@ -147,13 +148,13 @@ function SyllableTooltip({ tooltip }: { tooltip: TooltipState }) {
   return (
     <div className="tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
       <div className="tt-word">{syl.word}</div>
-      <div className="tt-row">Beat <span>{syl.beat_no} + {syl.beat_pos.toFixed(2)}</span></div>
-      <div className="tt-row">Bar <span>{syl.bar_no}</span></div>
-      <div className="tt-row">Stress <span>{syl.stress ? 'stressed' : 'unstressed'}</span></div>
-      <div className="tt-row">Grid <span>{syl.subdivision} · {syl.is_on_beat ? 'on beat' : 'off beat'}</span></div>
-      <div className="tt-row">Timing <span>{(syl.timing_quality * 100).toFixed(0)}%</span></div>
-      {syl.rhyme_group && <div className="tt-row">Rhyme <span>detected</span></div>}
-      {syl.center_time >= 0 && <div className="tt-row">Time <span>{syl.center_time.toFixed(2)}s</span></div>}
+      <div className="tt-row">{t('tooltip.beat')} <span>{syl.beat_no} + {syl.beat_pos.toFixed(2)}</span></div>
+      <div className="tt-row">{t('tooltip.bar')} <span>{syl.bar_no}</span></div>
+      <div className="tt-row">{t('tooltip.stress')} <span>{syl.stress ? t('tooltip.stressed') : t('tooltip.unstressed')}</span></div>
+      <div className="tt-row">{t('tooltip.grid')} <span>{syl.subdivision} · {syl.is_on_beat ? t('tooltip.onBeat') : t('tooltip.offBeat')}</span></div>
+      <div className="tt-row">{t('tooltip.timing')} <span>{(syl.timing_quality * 100).toFixed(0)}%</span></div>
+      {syl.rhyme_group && <div className="tt-row">{t('tooltip.rhyme')} <span>{t('tooltip.detected')}</span></div>}
+      {syl.center_time >= 0 && <div className="tt-row">{t('tooltip.time')} <span>{syl.center_time.toFixed(2)}s</span></div>}
     </div>
   );
 }
@@ -162,13 +163,13 @@ function BarTooltip({ tooltip }: { tooltip: BarTooltipState }) {
   const bar = tooltip.bar;
   return (
     <div className="tooltip bar-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
-      <div className="tt-word">Bar {bar.bar_no}</div>
-      <div className="tt-row">Density <span>{bar.density} syl/beat</span></div>
-      <div className="tt-row">Syncopation <span>{(bar.syncopation_score * 100).toFixed(0)}%</span></div>
-      <div className="tt-row">Timing <span>{(bar.timing_variance * 100).toFixed(1)}</span></div>
-      <div className="tt-row">Pocket <span>{bar.pocket_offset.toFixed(3)}</span></div>
-      <div className="tt-row">Stressed <span>{(bar.stressed_ratio * 100).toFixed(0)}%</span></div>
-      <div className="tt-row">Syllables <span>{bar.syllable_count}</span></div>
+      <div className="tt-word">{t('tooltip.bar')} {bar.bar_no}</div>
+      <div className="tt-row">{t('metrics.density')} <span>{bar.density} syl/beat</span></div>
+      <div className="tt-row">{t('metrics.syncopation')} <span>{(bar.syncopation_score * 100).toFixed(0)}%</span></div>
+      <div className="tt-row">{t('tooltip.timing')} <span>{(bar.timing_variance * 100).toFixed(1)}</span></div>
+      <div className="tt-row">{t('tooltip.pocket')} <span>{bar.pocket_offset.toFixed(3)}</span></div>
+      <div className="tt-row">{t('tooltip.stressed')} <span>{(bar.stressed_ratio * 100).toFixed(0)}%</span></div>
+      <div className="tt-row">{t('tooltip.syllables')} <span>{bar.syllable_count}</span></div>
     </div>
   );
 }

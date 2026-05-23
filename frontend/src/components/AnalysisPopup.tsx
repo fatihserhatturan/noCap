@@ -1,4 +1,5 @@
 import { ProgressPanel } from './ProgressPanel';
+import { t } from '../i18n';
 import type { StepId, StepState } from '../types';
 
 export function AnalysisPopup({
@@ -16,14 +17,14 @@ export function AnalysisPopup({
 }) {
   return (
     <div className="analysis-modal-backdrop" role="presentation">
-      <section className="analysis-modal" role="dialog" aria-modal="true" aria-label="Track analysis progress">
+      <section className="analysis-modal" role="dialog" aria-modal="true" aria-label={t('analysis.progressAria')}>
         <div className="analysis-modal-head">
           <div>
-            <h2>{status === 'done' ? 'Analysis Complete' : status === 'error' ? 'Analysis Failed' : 'Analyzing Track'}</h2>
-            <p>Medium model · {filename}</p>
+            <h2>{status === 'done' ? t('analysis.complete') : status === 'error' ? t('analysis.failed') : t('analysis.running')}</h2>
+            <p>{t('analysis.modelLine', { filename })}</p>
           </div>
           {status !== 'running' && (
-            <button className="ghost-btn" onClick={onClose}>Close</button>
+            <button className="ghost-btn" onClick={onClose}>{t('analysis.close')}</button>
           )}
         </div>
         <ProgressPanel filename={filename} steps={steps} error={error} />

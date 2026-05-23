@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from nocap.i18n import msg
 from nocap.audio.loader import AudioData
 from nocap.text.parser import TimedLine
 
@@ -30,7 +31,7 @@ class TranscriptResult:
 
 def require_word_timestamps(result: TranscriptResult) -> None:
     if not result.has_word_timestamps:
-        raise ValueError("word-level timestamps required for v2 timing")
+        raise ValueError(msg("audio.needWordTimestamps"))
 
 
 HIP_HOP_PROMPT = None  # prompt causes hallucination on vocal stems; omit
@@ -54,19 +55,17 @@ def transcribe(
     try:
         import whisper
     except ImportError as e:
-        raise ImportError(
-            "openai-whisper is required: pip install openai-whisper"
-        ) from e
+        raise ImportError(msg("audio.needWhisper")) from e
 
     _patch_ssl()
 
     if progress_callback:
-        progress_callback("Loading Whisper model…")
+        progress_callback(msg("audio.loadingWhisperModel"))
 
     model = whisper.load_model(model_name)
 
     if progress_callback:
-        progress_callback("Transcribing audio…")
+        progress_callback(msg("audio.transcribing"))
 
     audio_arr = _resample_to_16k(audio)
     prompt = initial_prompt  # None by default; explicit prompt can still be passed

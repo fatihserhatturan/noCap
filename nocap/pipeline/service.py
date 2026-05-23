@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from nocap.i18n import msg
+
 from .models import AnalysisOptions, AnalysisResult, ProgressEvent, ProgressReporter
 from .words import analyze_lines, analyze_transcript_words
 
@@ -13,33 +15,33 @@ def analyze_track(
 ) -> AnalysisResult:
     from nocap.audio.loader import load
 
-    _emit(reporter, "load", f"Loading audio: {audio_path}")
+    _emit(reporter, "load", msg("pipeline.loadingAudio", path=audio_path))
     audio_data = load(audio_path)
-    _emit(reporter, "load", f"{audio_data.duration:.1f}s loaded", True)
+    _emit(reporter, "load", msg("pipeline.loaded", duration=audio_data.duration), True)
     transcription_audio = audio_data
     vocals_audio = None
 
     if options.separate:
         from nocap.audio.separator import assess_vocal_stem, is_available, separate
         if is_available():
-            _emit(reporter, "transcribe", "Isolating vocals with Demucs...")
+            _emit(reporter, "transcribe", msg("pipeline.isolating"))
             vocals = separate(audio_data)
             stem_quality = assess_vocal_stem(vocals, audio_data)
             if stem_quality.usable:
                 transcription_audio = vocals
                 vocals_audio = vocals
             else:
-                _emit(reporter, "transcribe", f"Vocals skipped: {stem_quality.reason}; using original mix...")
+                _emit(reporter, "transcribe", msg("pipeline.vocalsSkipped", reason=stem_quality.reason))
         else:
-            _emit(reporter, "transcribe", "Demucs not installed - skipping vocal separation.")
+            _emit(reporter, "transcribe", msg("pipeline.demucsMissing"))
 
     grid = _build_grid(audio_data, options, reporter)
     transcript_words = None
     if options.lyrics is not None:
         from nocap.text.parser import parse
-        _emit(reporter, "transcribe", f"Parsing lyrics: {options.lyrics}")
+        _emit(reporter, "transcribe", msg("pipeline.parsingLyrics", path=options.lyrics))
         lines = parse(options.lyrics)
-        _emit(reporter, "transcribe", f"{len(lines)} lines parsed.", True)
+        _emit(reporter, "transcribe", msg("pipeline.linesParsed", count=len(lines)), True)
     else:
         lines, transcript_words = _transcribe(transcription_audio, options, reporter)
 
@@ -61,11 +63,11 @@ def analyze_lyrics(
     reporter: ProgressReporter | None = None,
 ) -> AnalysisResult:
     if options.bpm is None:
-        raise ValueError("--bpm is required when no audio file is provided.")
+        raise ValueError(msg("pipeline.needBpm"))
     from nocap.audio.beat_tracker import build_from_bpm
     from nocap.text.parser import parse
 
-    _emit(reporter, "transcribe", f"Parsing lyrics: {lyrics_path}")
+    _emit(reporter, "transcribe", msg("pipeline.parsingLyrics", path=lyrics_path))
     lines = parse(lyrics_path)
     max_ts = max((line.start for line in lines if line.start >= 0), default=-1)
     duration = max_ts + 30.0 if max_ts >= 0 else len(lines) * 3.0
@@ -86,24 +88,24 @@ def analyze_lyrics(
 def _build_grid(audio_data, options: AnalysisOptions, reporter: ProgressReporter | None):
     if options.bpm is not None:
         from nocap.audio.beat_tracker import build_from_bpm
-        _emit(reporter, "beat", f"Using forced BPM: {options.bpm}")
+        _emit(reporter, "beat", msg("pipeline.forcedBpm", bpm=options.bpm))
         grid = build_from_bpm(options.bpm, audio_data.duration)
     else:
         from nocap.audio.beat_tracker import track
-        _emit(reporter, "beat", "Detecting beats...")
+        _emit(reporter, "beat", msg("pipeline.detectingBeats"))
         grid = track(audio_data)
-        _emit(reporter, "beat", f"BPM: {grid.bpm:.1f}", True)
+        _emit(reporter, "beat", msg("pipeline.bpm", bpm=grid.bpm), True)
     return _apply_offsets(grid, options, reporter)
 
 
 def _apply_offsets(grid, options: AnalysisOptions, reporter: ProgressReporter | None):
     if options.downbeat_offset:
         from nocap.audio.beat_tracker import apply_downbeat_offset
-        _emit(reporter, "beat", f"Applying manual downbeat offset: {options.downbeat_offset} beat(s)")
+        _emit(reporter, "beat", msg("pipeline.downbeatOffset", offset=options.downbeat_offset))
         grid = apply_downbeat_offset(grid, options.downbeat_offset)
     if options.bar_offset:
         from nocap.audio.beat_tracker import apply_bar_offset
-        _emit(reporter, "beat", f"Applying manual bar offset: {options.bar_offset} bar(s)")
+        _emit(reporter, "beat", msg("pipeline.barOffset", offset=options.bar_offset))
         grid = apply_bar_offset(grid, options.bar_offset)
     return grid
 
@@ -111,17 +113,17 @@ def _apply_offsets(grid, options: AnalysisOptions, reporter: ProgressReporter | 
 def _transcribe(audio_data, options: AnalysisOptions, reporter: ProgressReporter | None):
     from nocap.audio.transcriber import require_word_timestamps, transcribe, words_to_timed_lines
 
-    _emit(reporter, "transcribe", f"Loading Whisper {options.whisper_model}...")
+    _emit(reporter, "transcribe", msg("pipeline.loadingWhisper", model=options.whisper_model))
     tr = transcribe(audio_data, model_name=options.whisper_model, language=options.language)
     require_word_timestamps(tr)
-    _emit(reporter, "transcribe", f"Language: {tr.language} - {len(tr.words)} words", True)
+    _emit(reporter, "transcribe", msg("pipeline.languageWords", language=tr.language, count=len(tr.words)), True)
     return words_to_timed_lines(tr.words), tr.words
 
 
 def _finish(*, title, grid, lines, audio_path, duration, transcript_words, reporter):
     if not lines:
-        raise ValueError("Nothing to analyze - provide a lyrics file or an audio file.")
-    _emit(reporter, "align", "Analyzing flow...")
+        raise ValueError(msg("pipeline.nothing"))
+    _emit(reporter, "align", msg("pipeline.analyzingFlow"))
     all_words = analyze_transcript_words(transcript_words) if transcript_words else analyze_lines(lines)
     from nocap.analysis.aligner import align, align_words
     from nocap.analysis.exporter import build_flowmap
@@ -135,7 +137,7 @@ def _finish(*, title, grid, lines, audio_path, duration, transcript_words, repor
     )
     bars = compute_bar_metrics(aligned, grid)
     summary = compute_summary(bars, aligned)
-    _emit(reporter, "align", f"{len(aligned)} syllables mapped", True)
+    _emit(reporter, "align", msg("pipeline.syllablesMapped", count=len(aligned)), True)
     return build_flowmap(
         title=title,
         grid=grid,

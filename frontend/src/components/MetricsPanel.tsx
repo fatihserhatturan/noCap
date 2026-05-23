@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react';
 import type { FlowMap } from '../types';
 import { buildColorMap, colorToCss } from '../flow/colors';
+import { t } from '../i18n';
 
 type CompareMetric = 'density' | 'syncopation_score' | 'stressed_ratio' | 'syllable_count' | 'pocket_offset' | 'timing_variance';
 
 const compareOptions: Array<{ key: CompareMetric; label: string }> = [
-  { key: 'density', label: 'Density' },
-  { key: 'syncopation_score', label: 'Sync' },
-  { key: 'stressed_ratio', label: 'Stress' },
-  { key: 'syllable_count', label: 'Count' },
-  { key: 'pocket_offset', label: 'Pocket' },
-  { key: 'timing_variance', label: 'Timing' },
+  { key: 'density', label: t('metrics.density') },
+  { key: 'syncopation_score', label: t('metrics.sync') },
+  { key: 'stressed_ratio', label: t('metrics.stress') },
+  { key: 'syllable_count', label: t('metrics.count') },
+  { key: 'pocket_offset', label: t('metrics.pocket') },
+  { key: 'timing_variance', label: t('metrics.timing') },
 ];
 
 export function FlowStatsPanel({
@@ -32,20 +33,20 @@ export function FlowStatsPanel({
       }));
   }, [flowmap, compareMetric]);
   const metrics = [
-    { label: 'Avg Density', value: `${flowmap.summary.avg_density} syl/beat`, pct: flowmap.summary.avg_density / 8 },
-    { label: 'Peak Density', value: `${flowmap.summary.peak_density} syl/beat`, pct: flowmap.summary.peak_density / 8 },
-    { label: 'Syncopation', value: `${(flowmap.summary.syncopation_score * 100).toFixed(0)}%`, pct: flowmap.summary.syncopation_score },
-    { label: 'Consistency', value: `${(flowmap.summary.consistency * 100).toFixed(0)}%`, pct: flowmap.summary.consistency },
-    { label: 'Rhyme Chain', value: `${flowmap.summary.rhyme_chain_avg.toFixed(1)} avg`, pct: flowmap.summary.rhyme_chain_avg / 6 },
-    { label: 'Pocket', value: `${(flowmap.summary.pocket_score * 100).toFixed(0)}%`, pct: flowmap.summary.pocket_score },
-    { label: 'Timing Quality', value: `${(flowmap.summary.timing_quality_avg * 100).toFixed(0)}%`, pct: flowmap.summary.timing_quality_avg },
-    { label: 'Delivery', value: `${(flowmap.summary.delivery_consistency * 100).toFixed(0)}%`, pct: flowmap.summary.delivery_consistency },
+    { label: t('metrics.avgDensity'), value: `${flowmap.summary.avg_density} syl/beat`, pct: flowmap.summary.avg_density / 8 },
+    { label: t('metrics.peakDensity'), value: `${flowmap.summary.peak_density} syl/beat`, pct: flowmap.summary.peak_density / 8 },
+    { label: t('metrics.syncopation'), value: `${(flowmap.summary.syncopation_score * 100).toFixed(0)}%`, pct: flowmap.summary.syncopation_score },
+    { label: t('metrics.consistency'), value: `${(flowmap.summary.consistency * 100).toFixed(0)}%`, pct: flowmap.summary.consistency },
+    { label: t('metrics.rhymeChain'), value: `${flowmap.summary.rhyme_chain_avg.toFixed(1)} avg`, pct: flowmap.summary.rhyme_chain_avg / 6 },
+    { label: t('metrics.pocket'), value: `${(flowmap.summary.pocket_score * 100).toFixed(0)}%`, pct: flowmap.summary.pocket_score },
+    { label: t('metrics.timingQuality'), value: `${(flowmap.summary.timing_quality_avg * 100).toFixed(0)}%`, pct: flowmap.summary.timing_quality_avg },
+    { label: t('metrics.delivery'), value: `${(flowmap.summary.delivery_consistency * 100).toFixed(0)}%`, pct: flowmap.summary.delivery_consistency },
   ];
 
   return (
     <>
       <section>
-        <h3>Flow Metrics</h3>
+        <h3>{t('metrics.flow')}</h3>
         <div className="metrics-list">
           {metrics.map((metric) => (
             <div key={metric.label}>
@@ -61,7 +62,7 @@ export function FlowStatsPanel({
         </div>
       </section>
       <section>
-        <h3>Bar Compare</h3>
+        <h3>{t('metrics.barCompare')}</h3>
         <div className="segmented">
           {compareOptions.map((option) => (
             <button
@@ -76,7 +77,7 @@ export function FlowStatsPanel({
         <div className="compare-list">
           {comparedBars.map(({ bar: item, pct }) => (
             <div key={item.bar_no} className={`compare-row ${hoveredBar === item.bar_no ? 'compare-active' : ''}`}>
-              <span className="compare-label">Bar {item.bar_no}</span>
+              <span className="compare-label">{t('details.bar')} {item.bar_no}</span>
               <div className="compare-track">
                 <div style={{ width: `${Math.max(4, pct * 100)}%` }} />
               </div>
@@ -103,9 +104,9 @@ export function MetricsPanel({
   return (
     <aside className="sidebar">
       <section>
-        <h3>Rhyme Groups</h3>
+        <h3>{t('metrics.rhymes')}</h3>
         <div className="rhyme-list">
-          {flowmap.rhyme_chains.length === 0 && flowmap.rhyme_groups.length === 0 && <span className="empty">No rhymes detected</span>}
+          {flowmap.rhyme_chains.length === 0 && flowmap.rhyme_groups.length === 0 && <span className="empty">{t('metrics.noRhymes')}</span>}
           {(flowmap.rhyme_groups.length ? flowmap.rhyme_groups.map((group) => ({
             group: group.id,
             count: group.occurrences.length,

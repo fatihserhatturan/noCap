@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react';
 import { ChevronDown, Download, FileCode2, FileImage } from 'lucide-react';
 import { downloadFlowmapPng, downloadFlowmapSvg } from '../export/flowExport';
+import { t } from '../i18n';
 import type { FlowMap } from '../types';
 
 export function ExportMenu({ flowmap }: { flowmap: FlowMap }) {
@@ -12,7 +13,7 @@ export function ExportMenu({ flowmap }: { flowmap: FlowMap }) {
     <details className="export-menu">
       <summary className="ghost-btn export-trigger">
         <Download size={15} />
-        Export
+        {t('export.action')}
         <ChevronDown className="export-chevron" size={14} />
       </summary>
       <div className="export-popover">
@@ -24,7 +25,7 @@ export function ExportMenu({ flowmap }: { flowmap: FlowMap }) {
           }}
         >
           <FileImage className="export-option-icon" size={15} />
-          <span>PNG</span>
+          <span>{t('export.png')}</span>
         </button>
         <button
           className="export-option"
@@ -34,7 +35,7 @@ export function ExportMenu({ flowmap }: { flowmap: FlowMap }) {
           }}
         >
           <FileCode2 className="export-option-icon" size={15} />
-          <span>SVG</span>
+          <span>{t('export.svg')}</span>
         </button>
       </div>
     </details>

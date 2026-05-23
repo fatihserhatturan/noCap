@@ -1,5 +1,6 @@
 import type { AnalyzeMessage, FlowMap, LibraryTrack } from '../types';
 import { normalizeFlowMap } from '../flow/normalize';
+import { t } from '../i18n';
 
 export async function fetchFlowmap(): Promise<FlowMap | null> {
   const res = await fetch('/api/flowmap.json');
@@ -30,7 +31,7 @@ export async function openLibraryTrack(trackId: string): Promise<{
   has_vocals: boolean;
 }> {
   const res = await fetch(`/api/library/${encodeURIComponent(trackId)}/open`);
-  if (!res.ok) throw new Error(`Could not open track (${res.status})`);
+  if (!res.ok) throw new Error(t('api.openTrackFailed', { status: res.status }));
   const data = await res.json() as {
     flowmap: FlowMap;
     track: LibraryTrack;
@@ -45,7 +46,7 @@ export async function openLibraryTrack(trackId: string): Promise<{
 
 export async function deleteLibraryTrack(trackId: string): Promise<void> {
   const res = await fetch(`/api/library/${encodeURIComponent(trackId)}/delete`, { method: 'POST' });
-  if (!res.ok) throw new Error(`Could not delete track (${res.status})`);
+  if (!res.ok) throw new Error(t('api.deleteTrackFailed', { status: res.status }));
 }
 
 export async function analyzeTrack(
@@ -59,7 +60,7 @@ export async function analyzeTrack(
 
   const response = await fetch('/api/analyze', { method: 'POST', body: form });
   if (!response.ok || !response.body) {
-    throw new Error(`Analyze failed with HTTP ${response.status}`);
+    throw new Error(t('api.analyzeFailed', { status: response.status }));
   }
 
   const reader = response.body.getReader();

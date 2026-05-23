@@ -1,4 +1,5 @@
 import { Mic2, Music2 } from 'lucide-react';
+import { t } from '../i18n';
 import type { FlowMap } from '../types';
 import { FlowStatsPanel } from './MetricsPanel';
 
@@ -18,11 +19,11 @@ export function SourcePanel({
   return (
     <aside className="left-panel">
       <section>
-        <h3>Audio Source</h3>
+        <h3>{t('source.title')}</h3>
         <div className="source-list">
           <button className={`src-btn ${source === 'mix' ? 'src-active' : ''}`} onClick={() => onSourceChange('mix')}>
             <Music2 size={15} />
-            <span>Original Mix</span>
+            <span>{t('source.mix')}</span>
           </button>
           <button
             className={`src-btn ${source === 'vocals' ? 'src-active' : ''}`}
@@ -30,10 +31,10 @@ export function SourcePanel({
             disabled={!hasVocals}
           >
             <Mic2 size={15} />
-            <span>Vocals Only</span>
+            <span>{t('source.vocals')}</span>
           </button>
         </div>
-        {!hasVocals && <div className="muted-note">Vocals not available</div>}
+        {!hasVocals && <div className="muted-note">{t('source.unavailable')}</div>}
       </section>
       <FlowStatsPanel flowmap={flowmap} hoveredBar={hoveredBar} />
     </aside>
