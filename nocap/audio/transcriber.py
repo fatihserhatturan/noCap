@@ -61,6 +61,7 @@ def transcribe(
     initial_prompt: str | None = None,
     beam_size: int = 5,
     temperature: float = 0.0,
+    whisper_progress_callback=None,
 ) -> TranscriptResult:
     """Transcribe audio using whisper.cpp."""
     if progress_callback:
@@ -76,6 +77,7 @@ def transcribe(
         initial_prompt=initial_prompt,
         beam_size=beam_size,
         temperature=temperature,
+        whisper_progress_callback=whisper_progress_callback,
     )
 
     words = _filter_words(_extract_words(result))
@@ -146,6 +148,7 @@ def _run_whisper_cpp(
     initial_prompt: str | None,
     beam_size: int,
     temperature: float,
+    whisper_progress_callback=None,
 ) -> dict:
     model_path = _resolve_model_path()
     binary = _resolve_whisper_cpp_binary()
@@ -171,12 +174,10 @@ def _run_whisper_cpp(
         if initial_prompt:
             cmd.extend(["--prompt", initial_prompt])
 
-        completed = subprocess.run(cmd, capture_output=True, text=True, check=False)
-        details = (completed.stderr or completed.stdout).strip()
-        if completed.returncode != 0 and "ggml_metal_buffer_init" in details:
-            completed = subprocess.run([*cmd, "-ng"], capture_output=True, text=True, check=False)
-            details = (completed.stderr or completed.stdout).strip()
-        if completed.returncode != 0:
+        ok, details = _stream_whisper_subprocess(cmd, whisper_progress_callback)
+        if not ok and "ggml_metal_buffer_init" in details:
+            ok, details = _stream_whisper_subprocess([*cmd, "-ng"], None)
+        if not ok:
             raise RuntimeError(msg("audio.whisperCppFailed", error=details))
 
         json_path = output_base.with_suffix(".json")
@@ -184,6 +185,35 @@ def _run_whisper_cpp(
             raise RuntimeError(msg("audio.whisperCppNoOutput", path=json_path))
         with json_path.open("r", encoding="utf-8") as f:
             return _normalize_whisper_cpp_json(json.load(f))
+
+
+def _stream_whisper_subprocess(cmd: list[str], progress_callback) -> tuple[bool, str]:
+    """Run whisper.cpp and stream progress percentages from stderr in real time."""
+    import threading
+
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    stderr_lines: list[str] = []
+
+    def _read_stderr() -> None:
+        assert proc.stderr is not None
+        for line in proc.stderr:
+            stderr_lines.append(line)
+            if progress_callback:
+                m = re.search(r'progress\s*=\s*(\d+)\s*%', line)
+                if m:
+                    progress_callback(int(m.group(1)))
+
+    reader = threading.Thread(target=_read_stderr, daemon=True)
+    reader.start()
+    proc.wait()
+    reader.join(timeout=5)
+    details = "".join(stderr_lines).strip()
+    return proc.returncode == 0, details
 
 
 def _resolve_model_path() -> Path:

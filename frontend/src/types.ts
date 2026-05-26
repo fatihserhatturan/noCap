@@ -159,7 +159,7 @@ export interface LibraryTrack {
 }
 
 export type AnalyzeMessage =
-  | { type: 'progress'; step: StepId; msg?: string; done?: boolean }
+  | { type: 'progress'; step: StepId; msg?: string; done?: boolean; pct?: number }
   | { type: 'complete'; flowmap: FlowMap; track?: LibraryTrack; has_vocals: boolean }
   | { type: 'error'; msg: string; trace?: string };
 

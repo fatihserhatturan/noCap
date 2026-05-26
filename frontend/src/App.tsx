@@ -91,7 +91,7 @@ export function App() {
             <DeleteTrackModal track={library.deleteCandidate} onCancel={() => library.setDeleteCandidate(null)} onConfirm={library.confirmDeleteTrack} />
           )}
           {analysis.status !== 'idle' && (
-            <AnalysisPopup filename={analysis.filename} steps={analysis.steps} error={analysis.error} status={analysis.status} onClose={analysis.close} />
+            <AnalysisPopup filename={analysis.filename} steps={analysis.steps} error={analysis.error} status={analysis.status} transcribePct={analysis.transcribePct} onClose={analysis.close} />
           )}
         </main>
       )}

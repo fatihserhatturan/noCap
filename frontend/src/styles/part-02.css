@@ -163,7 +163,33 @@
 .step-body { display: flex; flex-direction: column; gap: 2px; }
 .step-msg { color: var(--muted); min-height: 14px; font-size: 11px; }
 .progress-bar-wrap { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
-.progress-bar-fill { height: 100%; background: var(--accent); transition: width 0.25s ease; }
+.progress-bar-fill { height: 100%; background: var(--accent); transition: width 0.4s ease; }
+
+/* Whisper real-time sub-progress (shown inside the Recognizing lyrics step) */
+.transcribe-sub-bar-wrap {
+  position: relative;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+  width: 100%;
+}
+.transcribe-sub-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+  opacity: 0.7;
+}
+.transcribe-sub-pct {
+  position: absolute;
+  right: 0;
+  top: -14px;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1;
+}
 .error-panel {
   max-width: 680px;
   white-space: pre-wrap;

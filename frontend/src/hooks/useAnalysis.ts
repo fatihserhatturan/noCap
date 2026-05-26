@@ -14,11 +14,13 @@ export function useAnalysis(onComplete: (flowmap: FlowMap, hasVocals: boolean) =
   const [filename, setFilename] = useState('');
   const [error, setError] = useState('');
   const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [transcribePct, setTranscribePct] = useState<number | null>(null);
 
   async function start(file: File) {
     setFilename(file.name);
     setError('');
     setSteps(initialSteps);
+    setTranscribePct(null);
     setStatus('running');
     try {
       await analyzeTrack(file, handleMessage);
@@ -37,12 +39,26 @@ export function useAnalysis(onComplete: (flowmap: FlowMap, hasVocals: boolean) =
     setSteps(initialSteps);
     setFilename('');
     setError('');
+    setTranscribePct(null);
     setStatus('idle');
   }
 
   function handleMessage(message: AnalyzeMessage) {
     if (message.type === 'progress') {
-      setSteps((prev) => ({ ...prev, [message.step]: { status: message.done ? 'done' : 'active', msg: message.msg || '' } }));
+      // pct-only events (whisper progress): update bar but keep last meaningful msg
+      if (message.pct !== undefined) {
+        setTranscribePct(message.pct);
+        setSteps((prev) => ({ ...prev, [message.step]: { ...prev[message.step], status: 'active' } }));
+        return;
+      }
+      setSteps((prev) => ({
+        ...prev,
+        [message.step]: {
+          status: message.done ? 'done' : 'active',
+          msg: message.msg || prev[message.step].msg,
+        },
+      }));
+      if (message.step === 'transcribe' && message.done) setTranscribePct(100);
     } else if (message.type === 'complete') {
       onComplete(message.flowmap, message.has_vocals);
       setStatus('done');
@@ -52,5 +68,5 @@ export function useAnalysis(onComplete: (flowmap: FlowMap, hasVocals: boolean) =
     }
   }
 
-  return { steps, filename, error, status, start, close, reset };
+  return { steps, filename, error, status, transcribePct, start, close, reset };
 }

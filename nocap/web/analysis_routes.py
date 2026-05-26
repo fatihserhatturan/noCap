@@ -55,7 +55,10 @@ def register_analysis_routes(app, store: LibraryStore, state: SessionState) -> N
             while True:
                 item = events.get()
                 if isinstance(item, ProgressEvent):
-                    yield sse("progress", step=item.step, msg=item.message, done=item.done)
+                    kwargs: dict = {"step": item.step, "msg": item.message, "done": item.done}
+                    if item.pct is not None:
+                        kwargs["pct"] = item.pct
+                    yield sse("progress", **kwargs)
                     continue
                 kind, payload = item
                 if kind == "complete":

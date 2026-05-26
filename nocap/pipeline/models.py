@@ -12,6 +12,7 @@ class ProgressEvent:
     step: str
     message: str
     done: bool = False
+    pct: int | None = None
 
 
 ProgressReporter = Callable[[ProgressEvent], None]

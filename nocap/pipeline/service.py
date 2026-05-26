@@ -31,10 +31,7 @@ def analyze_track(
             if stem_quality.usable:
                 transcription_audio = vocals
                 vocals_audio = vocals
-            else:
-                _emit(reporter, "transcribe", msg("pipeline.vocalsSkipped", reason=stem_quality.reason))
-        else:
-            _emit(reporter, "transcribe", msg("pipeline.demucsMissing"))
+            # silently fall back to mix — no technical detail shown to user
 
     grid = _build_grid(audio_data, options, reporter)
     transcript_words = None
@@ -114,12 +111,17 @@ def _apply_offsets(grid, options: AnalysisOptions, reporter: ProgressReporter | 
 
 
 def _transcribe(audio_data, options: AnalysisOptions, reporter: ProgressReporter | None):
-    from nocap.audio.transcriber import DEFAULT_WHISPER_CPP_MODEL, require_word_timestamps, transcribe, words_to_timed_lines
+    from nocap.audio.transcriber import require_word_timestamps, transcribe, words_to_timed_lines
 
-    _emit(reporter, "transcribe", msg("pipeline.loadingWhisper", model=DEFAULT_WHISPER_CPP_MODEL))
-    tr = transcribe(audio_data, language=options.language)
+    _emit(reporter, "transcribe", msg("pipeline.loadingWhisper"))
+
+    def on_whisper_progress(pct: int) -> None:
+        if reporter is not None:
+            reporter(ProgressEvent("transcribe", "", done=False, pct=pct))
+
+    tr = transcribe(audio_data, language=options.language, whisper_progress_callback=on_whisper_progress)
     require_word_timestamps(tr)
-    _emit(reporter, "transcribe", msg("pipeline.languageWords", language=tr.language, count=len(tr.words)), True)
+    _emit(reporter, "transcribe", msg("pipeline.languageWords", count=len(tr.words)), True)
     return words_to_timed_lines(tr.words), tr.words
 
 
