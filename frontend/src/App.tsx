@@ -134,7 +134,7 @@ function Viewer({ flowmap, hasVocals, hasPlayableAudio, viewer }: {
         <section className="canvas-area">
           <FlowPixiStage
             flowmap={flowmap}
-            currentTime={viewer.currentTime}
+            currentTime={Math.max(0, viewer.currentTime + viewer.syncOffset)}
             activeRhyme={viewer.activeRhyme}
             onBarHover={viewer.setHoveredBar}
             onBarPlay={(barNo) => viewer.playBar(flowmap, barNo)}
@@ -143,7 +143,15 @@ function Viewer({ flowmap, hasVocals, hasPlayableAudio, viewer }: {
         </section>
         <MetricsPanel flowmap={flowmap} activeRhyme={viewer.activeRhyme} onActiveRhymeChange={viewer.setActiveRhyme} />
       </main>
-      <PlayerBar enabled={hasPlayableAudio} source={viewer.source} playRange={viewer.playRange} onTimeChange={viewer.setCurrentTime} />
+      <PlayerBar
+        enabled={hasPlayableAudio}
+        source={viewer.source}
+        playRange={viewer.playRange}
+        syncOffset={viewer.syncOffset}
+        onSyncOffsetChange={viewer.adjustSyncOffset}
+        onSyncOffsetReset={() => viewer.setSyncOffset(0)}
+        onTimeChange={viewer.setCurrentTime}
+      />
     </>
   );
 }

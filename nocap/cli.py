@@ -23,7 +23,6 @@ def cli() -> None:
 @click.option("--output", "-o", type=click.Path(path_type=Path), default=None, help=msg("cli.option.output"))
 @click.option("--no-serve", is_flag=True, default=False, help=msg("cli.option.noServe"))
 @click.option("--title", "-t", default=None, help=msg("cli.option.title"))
-@click.option("--whisper-model", default="base", show_default=True, type=click.Choice(["tiny", "base", "small", "medium", "large"]))
 @click.option("--language", default=None, help=msg("cli.option.language"))
 @click.option("--separate", is_flag=True, default=False, help=msg("cli.option.separate"))
 @click.option("--bar-offset", type=int, default=0, show_default=True, help=msg("cli.option.barOffset"))
@@ -35,7 +34,6 @@ def analyze(
     output: Path | None,
     no_serve: bool,
     title: str | None,
-    whisper_model: str,
     language: str | None,
     separate: bool,
     bar_offset: int,
@@ -45,7 +43,7 @@ def analyze(
     if audio is None and lyrics is None:
         raise click.UsageError(msg("cli.needInput"))
     click.echo(msg("cli.analyzing"))
-    options = AnalysisOptions(title, lyrics, bpm, whisper_model, language, separate, bar_offset, downbeat_offset)
+    options = AnalysisOptions(title=title, lyrics=lyrics, bpm=bpm, language=language, separate=separate, bar_offset=bar_offset, downbeat_offset=downbeat_offset)
     try:
         result = analyze_track(audio, options, _report_cli) if audio else analyze_lyrics(lyrics, options, _report_cli)
     except (ImportError, ValueError) as exc:

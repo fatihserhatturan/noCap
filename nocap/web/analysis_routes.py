@@ -35,7 +35,6 @@ def register_analysis_routes(app, store: LibraryStore, state: SessionState) -> N
         tmp.close()
         uploaded.save(tmp.name)
         tmp_path = Path(tmp.name)
-        model = _safe_model(request.form.get("model"))
         title = Path(uploaded.filename).stem
         track_id = uuid.uuid4().hex
 
@@ -45,7 +44,7 @@ def register_analysis_routes(app, store: LibraryStore, state: SessionState) -> N
 
             def run() -> None:
                 try:
-                    result = analyze_track(tmp_path, AnalysisOptions(title=title, whisper_model=model, separate=True), events.put)
+                    result = analyze_track(tmp_path, AnalysisOptions(title=title, separate=True), events.put)
                     events.put(("complete", result))
                 except Exception as exc:
                     events.put(("error", exc))
@@ -71,20 +70,14 @@ def register_analysis_routes(app, store: LibraryStore, state: SessionState) -> N
             "Connection": "keep-alive",
         })
 
-
-def _safe_model(model: str | None) -> str:
-    return model if model in {"tiny", "base", "small", "medium", "large"} else "small"
-
-
 def _complete(result, store: LibraryStore, state: SessionState, track_id: str, title: str, suffix: str, tmp_path: Path) -> str:
-    final_audio = store.track_dir(track_id) / f"audio{suffix}"
-    result.flowmap["metadata"]["audio_path"] = str(final_audio)
     metadata, audio_path, vocals_path = store.save_track(
         track_id=track_id,
         title=title,
         flowmap=result.flowmap,
         tmp_audio=tmp_path,
         audio_suffix=suffix,
+        mix_audio=result.audio_data,
         vocals_audio=result.vocals_audio,
     )
     state.flowmap = result.flowmap

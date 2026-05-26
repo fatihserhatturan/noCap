@@ -62,6 +62,31 @@
   transform: translate(-50%, -50%);
 }
 .time-display { min-width: 76px; text-align: right; color: var(--muted); font-size: 10px; }
+.sync-controls {
+  width: 132px;
+  display: grid;
+  grid-template-columns: 24px 24px 24px 1fr;
+  align-items: center;
+  gap: 5px;
+}
+.sync-controls button {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg3);
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.sync-controls button:hover { color: var(--text); border-color: var(--accent); }
+.sync-controls span {
+  color: var(--muted);
+  font-family: monospace;
+  font-size: 10px;
+  text-align: right;
+}
 
 .tooltip {
   position: fixed;

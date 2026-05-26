@@ -22,7 +22,6 @@ class AnalysisOptions:
     title: str | None = None
     lyrics: Path | None = None
     bpm: float | None = None
-    whisper_model: str = "base"
     language: str | None = None
     separate: bool = False
     bar_offset: int = 0

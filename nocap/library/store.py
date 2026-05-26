@@ -28,11 +28,10 @@ class LibraryStore:
         data["id"] = track_id
         return data
 
-    def save_track(self, *, track_id: str, title: str, flowmap: dict[str, Any], tmp_audio: Path, audio_suffix: str, vocals_audio=None):
+    def save_track(self, *, track_id: str, title: str, flowmap: dict[str, Any], tmp_audio: Path, audio_suffix: str, mix_audio=None, vocals_audio=None):
         track_dir = self.track_dir(track_id)
         track_dir.mkdir(parents=True, exist_ok=True)
-        audio_path = track_dir / f"audio{audio_suffix}"
-        tmp_audio.replace(audio_path)
+        audio_path = self._write_mix(track_dir, tmp_audio, audio_suffix, mix_audio)
         vocals_path = self._write_vocals(track_dir, vocals_audio)
         flowmap["metadata"]["audio_path"] = str(audio_path)
         self._flowmap_path(track_id).write_text(json.dumps(flowmap, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -64,6 +63,19 @@ class LibraryStore:
 
     def _flowmap_path(self, track_id: str) -> Path:
         return self.track_dir(track_id) / "flowmap.json"
+
+    def _write_mix(self, track_dir: Path, tmp_audio: Path, audio_suffix: str, mix_audio) -> Path:
+        if mix_audio is None:
+            audio_path = track_dir / f"audio{audio_suffix}"
+            tmp_audio.replace(audio_path)
+            return audio_path
+
+        import soundfile as sf
+
+        audio_path = track_dir / "audio.wav"
+        sf.write(audio_path, mix_audio.y, mix_audio.sr)
+        tmp_audio.unlink(missing_ok=True)
+        return audio_path
 
     def _write_vocals(self, track_dir: Path, vocals_audio) -> Path | None:
         if vocals_audio is None:

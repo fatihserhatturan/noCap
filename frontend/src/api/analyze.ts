@@ -51,12 +51,10 @@ export async function deleteLibraryTrack(trackId: string): Promise<void> {
 
 export async function analyzeTrack(
   file: File,
-  model: string,
   onMessage: (message: AnalyzeMessage) => void,
 ): Promise<void> {
   const form = new FormData();
   form.append('audio', file);
-  form.append('model', model);
 
   const response = await fetch('/api/analyze', { method: 'POST', body: form });
   if (!response.ok || !response.body) {

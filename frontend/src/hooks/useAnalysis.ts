@@ -21,7 +21,7 @@ export function useAnalysis(onComplete: (flowmap: FlowMap, hasVocals: boolean) =
     setSteps(initialSteps);
     setStatus('running');
     try {
-      await analyzeTrack(file, 'medium', handleMessage);
+      await analyzeTrack(file, handleMessage);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setStatus('error');

@@ -53,8 +53,8 @@ htmlcov/
 /tmp/
 .nocap_library/
 
-# Whisper model cache (large files)
-~/.cache/whisper/
+# whisper.cpp model files (large files)
+vendor/whisper.cpp/
 
 # Demucs outputs
 separated/

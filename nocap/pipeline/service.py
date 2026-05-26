@@ -114,10 +114,10 @@ def _apply_offsets(grid, options: AnalysisOptions, reporter: ProgressReporter | 
 
 
 def _transcribe(audio_data, options: AnalysisOptions, reporter: ProgressReporter | None):
-    from nocap.audio.transcriber import require_word_timestamps, transcribe, words_to_timed_lines
+    from nocap.audio.transcriber import DEFAULT_WHISPER_CPP_MODEL, require_word_timestamps, transcribe, words_to_timed_lines
 
-    _emit(reporter, "transcribe", msg("pipeline.loadingWhisper", model=options.whisper_model))
-    tr = transcribe(audio_data, model_name=options.whisper_model, language=options.language)
+    _emit(reporter, "transcribe", msg("pipeline.loadingWhisper", model=DEFAULT_WHISPER_CPP_MODEL))
+    tr = transcribe(audio_data, language=options.language)
     require_word_timestamps(tr)
     _emit(reporter, "transcribe", msg("pipeline.languageWords", language=tr.language, count=len(tr.words)), True)
     return words_to_timed_lines(tr.words), tr.words

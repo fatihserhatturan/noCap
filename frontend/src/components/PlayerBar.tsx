@@ -1,15 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pause, Play } from 'lucide-react';
+import { Pause, Play, RotateCcw, StepBack, StepForward } from 'lucide-react';
 
 export function PlayerBar({
   enabled,
   source,
   playRange,
+  syncOffset,
+  onSyncOffsetChange,
+  onSyncOffsetReset,
   onTimeChange,
 }: {
   enabled: boolean;
   source: 'mix' | 'vocals';
   playRange: { id: number; start: number; end: number } | null;
+  syncOffset: number;
+  onSyncOffsetChange: (delta: number) => void;
+  onSyncOffsetReset: () => void;
   onTimeChange: (time: number) => void;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -118,6 +124,18 @@ export function PlayerBar({
         <div className="timeline-cursor" style={{ left: `${pct}%` }} />
       </div>
       <span className="time-display">{fmt(time)} / {fmt(duration)}</span>
+      <div className="sync-controls">
+        <button type="button" onClick={() => onSyncOffsetChange(-0.05)} title="Earlier">
+          <StepBack size={13} />
+        </button>
+        <button type="button" onClick={onSyncOffsetReset} title="Reset sync">
+          <RotateCcw size={13} />
+        </button>
+        <button type="button" onClick={() => onSyncOffsetChange(0.05)} title="Later">
+          <StepForward size={13} />
+        </button>
+        <span>{fmtOffset(syncOffset)}</span>
+      </div>
       <audio
         ref={audioRef}
         preload="metadata"
@@ -126,6 +144,11 @@ export function PlayerBar({
       />
     </footer>
   );
+}
+
+function fmtOffset(seconds: number): string {
+  const ms = Math.round(seconds * 1000);
+  return `${ms >= 0 ? '+' : ''}${ms}ms`;
 }
 
 function fmt(seconds: number): string {

@@ -9,7 +9,6 @@ description = "Hip-hop flow and rhythm analyzer"
 requires-python = ">=3.10"
 dependencies = [
     "librosa>=0.10",
-    "openai-whisper>=20231117",
     "pronouncing>=0.2",
     "syllables>=1.0",
     "click>=8.0",
