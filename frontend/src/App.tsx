@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { BarChart3, Library, Route } from 'lucide-react';
 import { AnalysisPopup } from './components/AnalysisPopup';
 import { DeleteTrackModal } from './components/DeleteTrackModal';
@@ -23,6 +23,9 @@ export function App() {
   const [hasPlayableAudio, setHasPlayableAudio] = useState(false);
   const [mode, setMode] = useState<'library' | 'viewer' | 'details'>('library');
   const [error, setError] = useState('');
+  // audioTimeRef: syncOffset-applied time written directly by PlayerBar's RAF loop.
+  // FlowPixiStage reads this via Pixi's own ticker — bypasses React state entirely.
+  const audioTimeRef = useRef(0);
   const library = useLibrary();
   const viewer = useViewerState();
   const analysis = useAnalysis((nextFlowmap, nextHasVocals) => {
@@ -95,7 +98,7 @@ export function App() {
           )}
         </main>
       )}
-      {mode === 'viewer' && flowmap && <Viewer flowmap={flowmap} hasVocals={hasVocals} hasPlayableAudio={hasPlayableAudio} viewer={viewer} />}
+      {mode === 'viewer' && flowmap && <Viewer flowmap={flowmap} hasVocals={hasVocals} hasPlayableAudio={hasPlayableAudio} viewer={viewer} audioTimeRef={audioTimeRef} />}
       {mode === 'details' && flowmap && <DetailsScreen flowmap={flowmap} actions={<ExportMenu flowmap={flowmap} />} />}
     </div>
   );
@@ -121,11 +124,12 @@ function TopActions({ mode, setMode, reset }: {
   );
 }
 
-function Viewer({ flowmap, hasVocals, hasPlayableAudio, viewer }: {
+function Viewer({ flowmap, hasVocals, hasPlayableAudio, viewer, audioTimeRef }: {
   flowmap: FlowMap;
   hasVocals: boolean;
   hasPlayableAudio: boolean;
   viewer: ReturnType<typeof useViewerState>;
+  audioTimeRef: MutableRefObject<number>;
 }) {
   return (
     <>
@@ -134,7 +138,7 @@ function Viewer({ flowmap, hasVocals, hasPlayableAudio, viewer }: {
         <section className="canvas-area">
           <FlowPixiStage
             flowmap={flowmap}
-            currentTime={Math.max(0, viewer.currentTime + viewer.syncOffset)}
+            audioTimeRef={audioTimeRef}
             activeRhyme={viewer.activeRhyme}
             onBarHover={viewer.setHoveredBar}
             onBarPlay={(barNo) => viewer.playBar(flowmap, barNo)}
@@ -148,9 +152,9 @@ function Viewer({ flowmap, hasVocals, hasPlayableAudio, viewer }: {
         source={viewer.source}
         playRange={viewer.playRange}
         syncOffset={viewer.syncOffset}
+        audioTimeRef={audioTimeRef}
         onSyncOffsetChange={viewer.adjustSyncOffset}
         onSyncOffsetReset={() => viewer.setSyncOffset(0)}
-        onTimeChange={viewer.setCurrentTime}
       />
     </>
   );

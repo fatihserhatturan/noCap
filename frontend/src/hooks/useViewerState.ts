@@ -3,7 +3,6 @@ import type { FlowMap, FlowSyllable } from '../types';
 import { getBarTimeRange, getWordTimeRange, type PlayRange } from '../flow/playbackRanges';
 
 export function useViewerState() {
-  const [currentTime, setCurrentTime] = useState(0);
   const [source, setSource] = useState<'mix' | 'vocals'>('mix');
   const [activeRhyme, setActiveRhyme] = useState<string | null>(null);
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
@@ -12,7 +11,6 @@ export function useViewerState() {
 
   function reset() {
     setSource('mix');
-    setCurrentTime(0);
     setActiveRhyme(null);
     setHoveredBar(null);
     setPlayRange(null);
@@ -34,13 +32,11 @@ export function useViewerState() {
   }
 
   return {
-    currentTime,
     syncOffset,
     source,
     activeRhyme,
     hoveredBar,
     playRange,
-    setCurrentTime,
     setSyncOffset,
     adjustSyncOffset,
     setSource,

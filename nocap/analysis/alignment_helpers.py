@@ -25,9 +25,10 @@ def safe_word_window(start: float, end: float, syllable_count: int) -> tuple[flo
         return start, start + min_duration, 0.2
     duration = end - start
     if duration < min_duration:
-        midpoint = (start + end) / 2
-        half = min_duration / 2
-        return max(0.0, midpoint - half), midpoint + half, max(0.35, duration / min_duration)
+        # Anchor on start — whisper timestamps mark when a word *begins*, not its midpoint.
+        # Pulling the window backward (midpoint centering) shifts syllables earlier than
+        # the transcript places them, which worsens sync against playback.
+        return start, start + min_duration, max(0.35, duration / min_duration)
     if duration > max(1.2, syllable_count * 0.45):
         return start, end, 0.65
     return start, end, 1.0

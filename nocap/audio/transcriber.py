@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import json
 import os
 import re
@@ -63,22 +64,33 @@ def transcribe(
     temperature: float = 0.0,
     whisper_progress_callback=None,
 ) -> TranscriptResult:
-    """Transcribe audio using whisper.cpp."""
     if progress_callback:
         progress_callback(msg("audio.loadingWhisperModel"))
-
     if progress_callback:
         progress_callback(msg("audio.transcribing"))
 
     audio_arr = _resample_to_16k(audio)
-    result = _run_whisper_cpp(
-        audio_arr,
-        language=language,
-        initial_prompt=initial_prompt,
-        beam_size=beam_size,
-        temperature=temperature,
-        whisper_progress_callback=whisper_progress_callback,
-    )
+
+    # Prefer openai-whisper (PyTorch) when available: it uses cross-attention DTW
+    # for word_timestamps, giving ~10 ms accuracy.  whisper.cpp timestamps are
+    # quantised to 20 ms and its -dtw flag has known reliability bugs (t_dtw = -1).
+    try:
+        result = _run_openai_whisper(
+            audio_arr,
+            language=language,
+            initial_prompt=initial_prompt,
+            beam_size=beam_size,
+            temperature=temperature,
+        )
+    except ImportError:
+        result = _run_whisper_cpp(
+            audio_arr,
+            language=language,
+            initial_prompt=initial_prompt,
+            beam_size=beam_size,
+            temperature=temperature,
+            whisper_progress_callback=whisper_progress_callback,
+        )
 
     words = _filter_words(_extract_words(result))
     timed_lines = _segments_to_timed_lines(result)
@@ -141,6 +153,84 @@ def _resample_to_16k(audio: AudioData):
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
+def _run_openai_whisper(
+    audio_arr,
+    *,
+    language: str | None,
+    initial_prompt: str | None,
+    beam_size: int,
+    temperature: float,
+) -> dict:
+    """Transcribe using openai-whisper (PyTorch) with DTW word timestamps."""
+    import whisper  # raises ImportError if not installed → falls back to whisper.cpp
+
+    device = _torch_device()
+    # Use cached medium.pt (multilingual); fall back to downloading medium.en if needed
+    model_name = _openai_whisper_model_name()
+    model = whisper.load_model(model_name, device=device)
+
+    raw = whisper.transcribe(
+        model,
+        audio_arr,
+        language=language,
+        word_timestamps=True,
+        initial_prompt=initial_prompt,
+        beam_size=beam_size,
+        temperature=temperature,
+        verbose=False,
+    )
+
+    segments = []
+    for seg in raw.get("segments", []):
+        words = [
+            {
+                "word": w.get("word", "").strip(),
+                "start": float(w.get("start", 0.0)),
+                "end": float(w.get("end", 0.0)),
+                "probability": float(w.get("probability", 1.0)),
+            }
+            for w in seg.get("words", [])
+        ]
+        segments.append({
+            "text": seg.get("text", "").strip(),
+            "start": float(seg.get("start", 0.0)),
+            "end": float(seg.get("end", 0.0)),
+            "words": words,
+        })
+
+    return {
+        "text": raw.get("text", "").strip(),
+        "language": raw.get("language", "en"),
+        "segments": segments,
+    }
+
+
+@functools.lru_cache(maxsize=None)
+def _openai_whisper_model_name() -> str:
+    """Return the model name to use for openai-whisper (prefers already-cached models)."""
+    import os
+    cache_dir = Path(os.path.expanduser("~/.cache/whisper"))
+    # Prefer English-only medium for speed; fall back to multilingual medium if cached
+    for name in ("medium.en", "medium"):
+        pt = cache_dir / f"{name}.pt"
+        if pt.exists():
+            return name
+    return "medium.en"  # will be downloaded if missing
+
+
+@functools.lru_cache(maxsize=None)
+def _torch_device() -> str:
+    # MPS (Apple Silicon) is intentionally skipped: openai-whisper internally
+    # creates float64 tensors which MPS does not support, causing a runtime error.
+    try:
+        import torch
+        if torch.cuda.is_available():
+            return "cuda"
+    except ImportError:
+        pass
+    return "cpu"
+
+
 def _run_whisper_cpp(
     audio_arr,
     *,
@@ -174,6 +264,13 @@ def _run_whisper_cpp(
         if initial_prompt:
             cmd.extend(["--prompt", initial_prompt])
 
+        # Add DTW-based word timestamps when the binary supports it.
+        # -dtw MODEL enables cross-attention DTW alignment (≈10 ms accuracy vs 20 ms
+        # quantized from plain -ml 1), matching what openai/whisper word_timestamps=True does.
+        dtw_name = _dtw_model_name(model_path)
+        if dtw_name and _check_dtw_support(str(binary)):
+            cmd.extend(["-dtw", dtw_name])
+
         ok, details = _stream_whisper_subprocess(cmd, whisper_progress_callback)
         if not ok and "ggml_metal_buffer_init" in details:
             ok, details = _stream_whisper_subprocess([*cmd, "-ng"], None)
@@ -185,6 +282,31 @@ def _run_whisper_cpp(
             raise RuntimeError(msg("audio.whisperCppNoOutput", path=json_path))
         with json_path.open("r", encoding="utf-8") as f:
             return _normalize_whisper_cpp_json(json.load(f))
+
+
+@functools.lru_cache(maxsize=None)
+def _check_dtw_support(binary_str: str) -> bool:
+    """Return True if the binary supports the -dtw flag (result cached per binary path)."""
+    try:
+        result = subprocess.run(
+            [binary_str, "--help"],
+            capture_output=True, text=True, timeout=10,
+        )
+        return "dtw" in (result.stdout + result.stderr).lower()
+    except Exception:
+        return False
+
+
+def _dtw_model_name(model_path: Path) -> str | None:
+    """Derive model name for -dtw flag from a standard ggml filename.
+
+    ``ggml-medium.en.bin`` → ``"medium.en"``
+    Returns None for unrecognised filenames so DTW is silently skipped.
+    """
+    stem = model_path.stem  # e.g. "ggml-medium.en"
+    if stem.startswith("ggml-"):
+        return stem[5:]
+    return None
 
 
 def _stream_whisper_subprocess(cmd: list[str], progress_callback) -> tuple[bool, str]:
@@ -279,6 +401,13 @@ def _normalize_whisper_cpp_json(data: dict) -> dict:
 def _item_word(item: dict, text: str, start: float, end: float) -> dict:
     token = _first_word_token(item)
     probability = float(token.get("p", 1.0)) if token else 1.0
+
+    # Prefer DTW-aligned start when available — it is derived from cross-attention
+    # alignment and gives ≈10 ms accuracy vs 20 ms-quantized segment boundaries.
+    dtw_start = _token_dtw_start(token) if token else None
+    if dtw_start is not None and 0.0 <= dtw_start <= end + 1.0:
+        start = dtw_start
+
     token_end = _token_end(token) if token else None
     if token_end is not None and token_end > start + 0.02:
         end = min(end, token_end)
@@ -300,6 +429,24 @@ def _token_end(token: dict | None) -> float | None:
     if not timestamps:
         return None
     return _seconds_from_timestamp(timestamps.get("to", "0"))
+
+
+def _token_dtw_start(token: dict | None) -> float | None:
+    """Return DTW-aligned token start in seconds, or None if unavailable.
+
+    whisper.cpp stores ``t_dtw`` as a raw centisecond integer (10 ms/unit),
+    the same internal unit as ``t0`` / ``t1`` before they are scaled to ms in
+    the ``offsets`` field.  A negative value (-1) means DTW was not computed.
+    """
+    if not token:
+        return None
+    t_dtw = token.get("t_dtw")
+    if t_dtw is None:
+        return None
+    val = int(t_dtw)
+    if val < 0:
+        return None
+    return val / 100.0  # centiseconds → seconds
 
 
 def _seconds_from_whisper_cpp_item(item: dict, key: str) -> float:

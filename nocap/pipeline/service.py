@@ -19,21 +19,23 @@ def analyze_track(
     _emit(reporter, "load", msg("pipeline.loadingAudio", path=audio_path))
     audio_data = load(audio_path)
     _emit(reporter, "load", msg("pipeline.loaded", duration=audio_data.duration), True)
+
+    # Beat detection runs on the original mix — no dependency on vocal separation.
+    # Must happen before vocal separation so step order matches the UI: load → beat → transcribe.
+    grid = _build_grid(audio_data, options, reporter)
+
     transcription_audio = audio_data
     vocals_audio = None
 
     if options.separate:
-        from nocap.audio.separator import assess_vocal_stem, is_available, separate
-        if is_available():
-            _emit(reporter, "transcribe", msg("pipeline.isolating"))
-            vocals = separate(audio_data)
-            stem_quality = assess_vocal_stem(vocals, audio_data)
-            if stem_quality.usable:
-                transcription_audio = vocals
-                vocals_audio = vocals
-            # silently fall back to mix — no technical detail shown to user
-
-    grid = _build_grid(audio_data, options, reporter)
+        from nocap.audio.separator import assess_vocal_stem, separate
+        _emit(reporter, "transcribe", msg("pipeline.isolating"))
+        vocals = separate(audio_data)          # raises ImportError if Demucs missing
+        stem_quality = assess_vocal_stem(vocals, audio_data)
+        if not stem_quality.usable:
+            raise ValueError(msg("pipeline.unusableStem", reason=stem_quality.reason))
+        transcription_audio = vocals
+        vocals_audio = vocals
     transcript_words = None
     if options.lyrics is not None:
         from nocap.text.parser import parse

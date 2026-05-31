@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { Application, Container, Graphics } from 'pixi.js';
 import type { FlowMap, FlowSyllable } from '../types';
 import { buildColorMap } from '../flow/colors';
@@ -12,14 +12,16 @@ import { t } from '../i18n';
 
 interface Props {
   flowmap: FlowMap;
-  currentTime: number;
+  /** Live playback time (sync-offset applied) written by PlayerBar's RAF.
+   *  Read by Pixi's own ticker — bypasses React state for zero-latency playhead. */
+  audioTimeRef: MutableRefObject<number>;
   activeRhyme: string | null;
   onBarHover: (barNo: number | null) => void;
   onBarPlay: (barNo: number) => void;
   onWordPlay: (syllable: FlowSyllable) => void;
 }
 
-export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover, onBarPlay, onWordPlay }: Props) {
+export function FlowPixiStage({ flowmap, audioTimeRef, activeRhyme, onBarHover, onBarPlay, onWordPlay }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<Application | null>(null);
@@ -78,18 +80,31 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover, o
       if (!canvas) return;
       host.replaceChildren(canvas);
       canvas.className = 'flow-canvas';
+      // Pixi v8 sets touch-action:none on the canvas, blocking native scroll.
+      // pan-y lets the browser handle vertical scroll while Pixi keeps pointer events.
+      canvas.style.touchAction = 'pan-y';
       addCanvasHandlers(canvas, handlers);
       sceneRef.current = new Container();
       hoverRef.current = new Graphics();
       playheadRef.current = new Graphics();
       app.stage.addChild(sceneRef.current, hoverRef.current, playheadRef.current);
+
+      // Drive playhead updates from Pixi's own ticker instead of React state.
+      // audioTimeRef.current is written directly by PlayerBar's RAF — zero React overhead.
+      const playheadTicker = () => {
+        const layout = layoutRef.current;
+        if (!layout) return;
+        drawPlayhead(playheadRef.current, flowmapRef.current, layout, audioTimeRef.current, scrollRef.current);
+      };
+      app.ticker.add(playheadTicker);
+
       setPixiReady(true);
     });
     return () => {
       disposed = true;
       const canvas = getPixiCanvas(app);
       if (canvas) removeCanvasHandlers(canvas, handlers);
-      safeDestroyPixiApp(app);
+      safeDestroyPixiApp(app);  // stops ticker implicitly
       if (canvas && host.contains(canvas)) host.replaceChildren();
       appRef.current = null;
       sceneRef.current = null;
@@ -98,19 +113,15 @@ export function FlowPixiStage({ flowmap, currentTime, activeRhyme, onBarHover, o
       rectsRef.current = [];
       setPixiReady(false);
     };
-  }, []);
+  }, [audioTimeRef]);
 
   useEffect(() => {
     if (!pixiReady || !sceneRef.current) return;
     resizePixi(appRef.current, layout);
     drawScene(sceneRef.current, { flowmap, layout, activeRhyme, colorMap, rects: rectsRef.current });
     drawHover(hoverRef.current, flowmap, colorMap, hoveredRectRef.current, hoveredBarRef.current);
-    drawPlayhead(playheadRef.current, flowmap, layout, currentTime, scrollRef.current);
+    // Playhead will be redrawn immediately by the ticker; no separate call needed.
   }, [flowmap, layout, activeRhyme, colorMap, pixiReady]);
-
-  useEffect(() => {
-    if (pixiReady) drawPlayhead(playheadRef.current, flowmap, layout, currentTime, scrollRef.current);
-  }, [currentTime, layout, pixiReady]);
 
   return (
     <div ref={scrollRef} className="flow-stage-wrap">

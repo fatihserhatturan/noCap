@@ -44,7 +44,8 @@ def register_analysis_routes(app, store: LibraryStore, state: SessionState) -> N
 
             def run() -> None:
                 try:
-                    result = analyze_track(tmp_path, AnalysisOptions(title=title, separate=True), events.put)
+                    from nocap.audio.separator import is_available as demucs_available
+                    result = analyze_track(tmp_path, AnalysisOptions(title=title, separate=demucs_available()), events.put)
                     events.put(("complete", result))
                 except Exception as exc:
                     events.put(("error", exc))

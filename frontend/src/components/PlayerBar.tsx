@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { Pause, Play, RotateCcw, StepBack, StepForward } from 'lucide-react';
 
 export function PlayerBar({
@@ -6,24 +6,35 @@ export function PlayerBar({
   source,
   playRange,
   syncOffset,
+  audioTimeRef,
   onSyncOffsetChange,
   onSyncOffsetReset,
-  onTimeChange,
 }: {
   enabled: boolean;
   source: 'mix' | 'vocals';
   playRange: { id: number; start: number; end: number } | null;
   syncOffset: number;
+  audioTimeRef: MutableRefObject<number>;
   onSyncOffsetChange: (delta: number) => void;
   onSyncOffsetReset: () => void;
-  onTimeChange: (time: number) => void;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const segmentEndRef = useRef<number | null>(null);
+  // Keep syncOffset in a ref so the RAF closure always reads the latest value
+  const syncOffsetRef = useRef(syncOffset);
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [time, setTime] = useState(0);
+
+  // Keep syncOffset in a ref so the RAF closure always reads the latest value
+  // without needing to be in the dependency array.
+  useEffect(() => {
+    syncOffsetRef.current = syncOffset;
+    // If paused, push the updated offset immediately so the Pixi ticker sees it.
+    const audio = audioRef.current;
+    if (audio) audioTimeRef.current = Math.max(0, audio.currentTime + syncOffset);
+  }, [syncOffset, audioTimeRef]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -33,10 +44,10 @@ export function PlayerBar({
       audio.removeAttribute('src');
       audio.load();
       segmentEndRef.current = null;
+      audioTimeRef.current = 0;
       setPlaying(false);
       setDuration(0);
       setTime(0);
-      onTimeChange(0);
       return;
     }
     const saved = audio.currentTime;
@@ -48,7 +59,7 @@ export function PlayerBar({
     };
     audio.addEventListener('loadedmetadata', restore, { once: true });
     return () => audio.removeEventListener('loadedmetadata', restore);
-  }, [enabled, source, onTimeChange]);
+  }, [enabled, source]);
 
   useEffect(() => {
     if (!playing) {
@@ -57,8 +68,11 @@ export function PlayerBar({
     }
     const tick = () => {
       const current = audioRef.current?.currentTime || 0;
+      // Write sync-offset-applied time directly to the ref — no React state,
+      // no re-render. FlowPixiStage's Pixi ticker reads this every frame.
+      audioTimeRef.current = Math.max(0, current + syncOffsetRef.current);
+      // Keep local PlayerBar timeline display in sync (React state, for UI only).
       setTime(current);
-      onTimeChange(current);
       if (segmentEndRef.current !== null && current >= segmentEndRef.current) {
         if (audioRef.current) audioRef.current.pause();
         segmentEndRef.current = null;
@@ -71,19 +85,19 @@ export function PlayerBar({
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [playing, onTimeChange]);
+  }, [playing, audioTimeRef]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !enabled || !playRange) return;
     segmentEndRef.current = playRange.end;
     audio.currentTime = playRange.start;
+    audioTimeRef.current = Math.max(0, playRange.start + syncOffsetRef.current);
     setTime(playRange.start);
-    onTimeChange(playRange.start);
     void audio.play().then(() => setPlaying(true)).catch(() => {
       segmentEndRef.current = null;
     });
-  }, [enabled, playRange, onTimeChange]);
+  }, [enabled, playRange, audioTimeRef]);
 
   async function toggle() {
     const audio = audioRef.current;
@@ -105,8 +119,9 @@ export function PlayerBar({
     const next = pct * duration;
     if (audioRef.current) audioRef.current.currentTime = next;
     segmentEndRef.current = null;
+    // Write immediately so the Pixi ticker sees the new position at once.
+    audioTimeRef.current = Math.max(0, next + syncOffsetRef.current);
     setTime(next);
-    onTimeChange(next);
   }
 
   const pct = duration ? (time / duration) * 100 : 0;
