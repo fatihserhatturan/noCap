@@ -7,7 +7,7 @@
 #   ./scripts/build-desktop.sh --skip-frontend  # skip Vite+electron-builder
 #
 # Prerequisites (one-time setup already done):
-#   - .venv with project deps + openai-whisper installed
+#   - .venv with project deps + openai-whisper + demucs installed
 #   - Whisper model cached at ~/.cache/whisper/
 #   - Node.js + npm installed
 
@@ -38,7 +38,7 @@ echo ""
 
 if [ ! -f "$VENV_PYTHON" ]; then
   echo "✗ .venv not found. Run:"
-  echo "    python3 -m venv .venv && source .venv/bin/activate && pip install -e '.[dev]' && pip install openai-whisper"
+  echo "    python3 -m venv .venv && source .venv/bin/activate && pip install -e '.[dev,separator]' && pip install openai-whisper"
   exit 1
 fi
 
@@ -48,7 +48,6 @@ WHISPER_CACHE="$HOME/.cache/whisper"
 WHISPER_OUT="$BUILD_DIR/whisper_models"
 mkdir -p "$WHISPER_OUT"
 
-# Pick the best available model (prefer already-cached)
 WHISPER_MODEL=""
 for name in "medium.en" "medium"; do
   if [ -f "$WHISPER_CACHE/$name.pt" ]; then
@@ -67,13 +66,26 @@ fi
 
 echo "  Whisper model copied to build/whisper_models/"
 
-# ── 2. Build Python backend with PyInstaller ───────────────────────────────────
+# ── 2. Build React frontend (must run BEFORE PyInstaller) ─────────────────────
+# Flask serves the React app from inside the PyInstaller bundle.
+# We need dist/ to exist before bundling so --add-data can include it.
+
+if [ "$SKIP_FRONTEND" = false ] || [ "$SKIP_BACKEND" = false ]; then
+  echo ""
+  echo "▶ Building React frontend..."
+  cd "$FRONTEND_DIR"
+  npm install --silent
+  # Build only the React renderer (not the electron main / electron-builder step)
+  npx vite build 2>&1
+  echo "  React built → frontend/dist/"
+fi
+
+# ── 3. Build Python backend with PyInstaller ──────────────────────────────────
 
 if [ "$SKIP_BACKEND" = false ]; then
   echo ""
   echo "▶ Building Python backend (PyInstaller — this takes ~10 min first run)..."
 
-  # Ensure PyInstaller is installed
   if ! "$VENV_PYTHON" -m PyInstaller --version &>/dev/null; then
     echo "  Installing PyInstaller..."
     "$VENV_DIR/bin/pip" install pyinstaller --quiet
@@ -90,12 +102,19 @@ if [ "$SKIP_BACKEND" = false ]; then
     --distpath "$BACKEND_OUT" \
     --workpath "/tmp/nocap-pyinstaller-work" \
     --specpath "/tmp/nocap-pyinstaller-spec" \
+    --add-data "$FRONTEND_DIR/dist:frontend_dist" \
     --collect-all whisper \
     --collect-all librosa \
     --collect-all numba \
     --collect-all llvmlite \
     --collect-all torch \
     --collect-all torchaudio \
+    --collect-all demucs \
+    --collect-all einops \
+    --collect-all julius \
+    --collect-all openunmix \
+    --collect-all omegaconf \
+    --collect-all dora \
     --collect-all scipy \
     --collect-all sklearn \
     --collect-all soundfile \
@@ -121,7 +140,7 @@ if [ "$SKIP_BACKEND" = false ]; then
   echo "  Backend built → $BACKEND_OUT/nocap-server/"
 fi
 
-# ── 3. Convert icon PNG → icns (if needed) ────────────────────────────────────
+# ── 4. Convert icon PNG → icns (if needed) ────────────────────────────────────
 
 ICON_PNG="$BUILD_DIR/icon.png"
 ICON_ICNS="$BUILD_DIR/icon.icns"
@@ -139,14 +158,16 @@ if [ -f "$ICON_PNG" ] && [ ! -f "$ICON_ICNS" ]; then
   rm -rf "$ICONSET"
 fi
 
-# ── 4. Build React + Electron, then package ───────────────────────────────────
+# ── 5. Build Electron main + package with electron-builder ────────────────────
 
 if [ "$SKIP_FRONTEND" = false ]; then
   echo ""
-  echo "▶ Building React app + Electron main process..."
+  echo "▶ Packaging Electron app..."
   cd "$FRONTEND_DIR"
-  npm install --silent
-  npm run desktop:build
+  # Build electron main process and package (React is already built in step 2)
+  npx tsc -b
+  npx vite build --config vite.desktop.config.ts
+  npx electron-builder --mac
 fi
 
 echo ""

@@ -26,10 +26,18 @@ ENV/
 # Frontend
 node_modules/
 frontend/dist/
+frontend/dist-electron/
+frontend/dist-app/
 frontend/.vite/
 frontend/*.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts
+frontend/vite.desktop.config.js
+frontend/vite.desktop.config.d.ts
+
+# Desktop build artifacts
+frontend/build/backend/
+frontend/build/whisper_models/
 
 # Testing
 .pytest_cache/
