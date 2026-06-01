@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>noCap — Hip-Hop Flow Analyzer</title>
+  <meta name="description" content="Visualize how a rapper rides the beat. Beat detection, Whisper transcription, vocal separation, and interactive flow maps." />
+  <link rel="icon" href="assets/logo.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <nav>
+    <a class="nav-brand" href="#">
+      <img src="assets/logo.png" alt="noCap" width="28" />
+      <span>noCap</span>
+    </a>
+    <a class="nav-gh" href="https://github.com/YOUR_ORG/nocap" target="_blank">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      GitHub
+    </a>
+  </nav>
+
+  <section class="hero">
+    <img src="assets/logo.png" alt="noCap" class="hero-logo" />
+    <h1>See how a rapper <span class="accent">rides the beat.</span></h1>
+    <p class="hero-sub">
+      noCap maps every syllable to the beat grid — with beat detection,
+      AI transcription, vocal separation, and an interactive flow canvas.
+    </p>
+    <div class="hero-btns">
+      <a id="btn-arm64" class="btn-primary" href="https://github.com/YOUR_ORG/nocap/releases/latest" target="_blank">
+        ↓ Download for Mac <span class="chip">Apple Silicon</span>
+      </a>
+      <a id="btn-intel" class="btn-secondary" href="https://github.com/YOUR_ORG/nocap/releases/latest" target="_blank">
+        ↓ Intel Mac
+      </a>
+    </div>
+    <p class="hero-note">macOS 12+ · No Python or setup required</p>
+  </section>
+
+  <section class="preview">
+    <div class="preview-window">
+      <div class="preview-bar">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="preview-body">
+        <div class="preview-grid">
+          <div class="pg-label">Bar 1</div>
+          <div class="pg-row">
+            <div class="pg-syl s1">ride</div>
+            <div class="pg-syl s2">the</div>
+            <div class="pg-syl s3">beat</div>
+            <div class="pg-syl s4">hard</div>
+            <div class="pg-syl s5">like</div>
+          </div>
+          <div class="pg-label">Bar 2</div>
+          <div class="pg-row">
+            <div class="pg-syl s3">nev-</div>
+            <div class="pg-syl s1">er</div>
+            <div class="pg-syl s5">miss</div>
+            <div class="pg-syl s2">a</div>
+            <div class="pg-syl s4">step</div>
+          </div>
+          <div class="pg-label">Bar 3</div>
+          <div class="pg-row">
+            <div class="pg-syl s2">flow</div>
+            <div class="pg-syl s4">on</div>
+            <div class="pg-syl s1">ev-</div>
+            <div class="pg-syl s3">ery</div>
+            <div class="pg-syl s5">bar</div>
+          </div>
+        </div>
+        <div class="preview-playhead"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="how">
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li>
+        <span class="step-n">1</span>
+        <strong>Drop an audio file</strong>
+        <p>MP3, WAV, FLAC — any format works.</p>
+      </li>
+      <li>
+        <span class="step-n">2</span>
+        <strong>AI does the heavy lifting</strong>
+        <p>Demucs isolates vocals. Whisper transcribes every word with millisecond-accurate timestamps.</p>
+      </li>
+      <li>
+        <span class="step-n">3</span>
+        <strong>Syllables meet the grid</strong>
+        <p>Each syllable is aligned to the beat grid using the CMU Pronouncing Dictionary for stress patterns.</p>
+      </li>
+      <li>
+        <span class="step-n">4</span>
+        <strong>Explore the flow map</strong>
+        <p>Hover, click to play, highlight rhyme chains, and inspect timing metrics bar by bar.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="features">
+    <h2>Features</h2>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-icon">🥁</div>
+        <h3>Beat Detection</h3>
+        <p>BPM and full beat grid extracted directly from the waveform via librosa.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🎤</div>
+        <h3>Vocal Separation</h3>
+        <p>Demucs htdemucs model isolates the vocal stem for cleaner transcription.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">✍️</div>
+        <h3>Whisper Transcription</h3>
+        <p>OpenAI Whisper medium model with cross-attention DTW for ~10 ms word accuracy.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📊</div>
+        <h3>Flow Metrics</h3>
+        <p>Density, syncopation, pocket (ahead / center / behind), and timing variance per bar.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🎨</div>
+        <h3>Rhyme Detection</h3>
+        <p>Phonetic matching for perfect, slant, assonance, and internal rhymes — color-coded on the grid.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📦</div>
+        <h3>Track Library</h3>
+        <p>Save analyzed tracks and re-open them instantly — no re-analysis needed.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="quickstart">
+    <h2>Developer Quick Start</h2>
+    <pre><code>git clone https://github.com/YOUR_ORG/nocap.git
+cd nocap
+
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev,separator]" && pip install openai-whisper
+
+cd frontend && npm install
+npm run desktop:dev</code></pre>
+    <p class="qs-note">
+      The first analysis downloads the Whisper model (~1.5 GB) into
+      <code>~/.cache/whisper/</code> — one time only.
+    </p>
+  </section>
+
+  <footer>
+    <img src="assets/logo.png" alt="noCap" width="32" />
+    <span>noCap — open source hip-hop flow analyzer</span>
+  </footer>
+
+  <script>
+    // Fetch the latest GitHub release and update download links
+    (async () => {
+      try {
+        const r = await fetch('https://api.github.com/repos/YOUR_ORG/nocap/releases/latest');
+        if (!r.ok) return;
+        const data = await r.json();
+        const arm64 = data.assets?.find(a => a.name.includes('arm64') && a.name.endsWith('.dmg'));
+        const intel = data.assets?.find(a => a.name.endsWith('.dmg') && !a.name.includes('arm64'));
+        if (arm64) document.getElementById('btn-arm64').href = arm64.browser_download_url;
+        if (intel) document.getElementById('btn-intel').href = intel.browser_download_url;
+      } catch {}
+    })();
+  </script>
+
+</body>
+</html>
