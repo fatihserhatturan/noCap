@@ -153,14 +153,3 @@ cd frontend && npm run typecheck && npm run build
 
 ---
 
-## Contributing
-
-Pull requests are welcome. For significant changes, please open an issue first
-to discuss what you'd like to change. Keep new files under 200 lines and add
-focused tests for any new analysis behavior.
-
----
-
-## License
-
-MIT
