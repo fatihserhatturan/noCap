@@ -34,6 +34,7 @@ export function FlowPixiStage({ flowmap, audioTimeRef, activeRhyme, onBarHover, 
   const layoutRef = useRef<FlowLayout | null>(null);
   const flowmapRef = useRef(flowmap);
   const colorMapRef = useRef(new Map<string, number>());
+  const prevAudioTimeRef = useRef(-1);
   const callbacks = useRef<StageCallbacks>({ onBarHover, onBarPlay, onWordPlay });
   const [pixiReady, setPixiReady] = useState(false);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
@@ -81,8 +82,9 @@ export function FlowPixiStage({ flowmap, audioTimeRef, activeRhyme, onBarHover, 
       host.replaceChildren(canvas);
       canvas.className = 'flow-canvas';
       // Pixi v8 sets touch-action:none on the canvas, blocking native scroll.
-      // pan-y lets the browser handle vertical scroll while Pixi keeps pointer events.
-      canvas.style.touchAction = 'pan-y';
+      // pan-x pan-y lets the browser handle both scroll directions (trackpad + touch)
+      // while Pixi still receives mouse events for hover and click.
+      canvas.style.touchAction = 'pan-x pan-y';
       addCanvasHandlers(canvas, handlers);
       sceneRef.current = new Container();
       hoverRef.current = new Graphics();
@@ -91,10 +93,15 @@ export function FlowPixiStage({ flowmap, audioTimeRef, activeRhyme, onBarHover, 
 
       // Drive playhead updates from Pixi's own ticker instead of React state.
       // audioTimeRef.current is written directly by PlayerBar's RAF — zero React overhead.
+      // Auto-scroll only when audio is actually playing (time changed since last frame)
+      // to avoid fighting the user's manual scroll when paused.
       const playheadTicker = () => {
         const layout = layoutRef.current;
         if (!layout) return;
-        drawPlayhead(playheadRef.current, flowmapRef.current, layout, audioTimeRef.current, scrollRef.current);
+        const time = audioTimeRef.current;
+        const isPlaying = time !== prevAudioTimeRef.current;
+        prevAudioTimeRef.current = time;
+        drawPlayhead(playheadRef.current, flowmapRef.current, layout, time, isPlaying ? scrollRef.current : null);
       };
       app.ticker.add(playheadTicker);
 

@@ -150,6 +150,7 @@ function Viewer({ flowmap, hasVocals, hasPlayableAudio, viewer, audioTimeRef }: 
       <PlayerBar
         enabled={hasPlayableAudio}
         source={viewer.source}
+        audioPath={flowmap.metadata.audio_path ?? null}
         playRange={viewer.playRange}
         syncOffset={viewer.syncOffset}
         audioTimeRef={audioTimeRef}

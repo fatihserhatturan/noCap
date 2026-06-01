@@ -4,6 +4,7 @@ import { Pause, Play, RotateCcw, StepBack, StepForward } from 'lucide-react';
 export function PlayerBar({
   enabled,
   source,
+  audioPath,
   playRange,
   syncOffset,
   audioTimeRef,
@@ -12,6 +13,9 @@ export function PlayerBar({
 }: {
   enabled: boolean;
   source: 'mix' | 'vocals';
+  /** Unique identifier for the loaded track (e.g. server-side audio path).
+   *  Changes when the user opens a different track, triggering a full reload. */
+  audioPath: string | null;
   playRange: { id: number; start: number; end: number } | null;
   syncOffset: number;
   audioTimeRef: MutableRefObject<number>;
@@ -23,6 +27,8 @@ export function PlayerBar({
   const segmentEndRef = useRef<number | null>(null);
   // Keep syncOffset in a ref so the RAF closure always reads the latest value
   const syncOffsetRef = useRef(syncOffset);
+  // null → first load is always treated as a fresh track (never stale)
+  const prevAudioPathRef = useRef<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [time, setTime] = useState(0);
@@ -48,10 +54,34 @@ export function PlayerBar({
       setPlaying(false);
       setDuration(0);
       setTime(0);
+      prevAudioPathRef.current = null;
       return;
     }
+
+    // prevAudioPathRef starts as null, so the very first load is always a track change.
+    const trackChanged = audioPath !== prevAudioPathRef.current;
+    prevAudioPathRef.current = audioPath;
+
+    // Always embed audioPath in the URL so the browser cannot serve a cached
+    // response from a different track. Flask's send_file sets max-age=43200 (12h),
+    // which causes the browser to skip the server entirely without this.
+    const base = source === 'vocals' ? '/api/audio/vocals' : '/api/audio';
+    const src = audioPath ? `${base}?t=${encodeURIComponent(audioPath)}` : base;
+
+    if (trackChanged) {
+      audio.pause();
+      setPlaying(false);
+      setTime(0);
+      segmentEndRef.current = null;
+      audioTimeRef.current = 0;
+      audio.src = src;
+      audio.load();
+      return;
+    }
+
+    // Same track, source toggled (mix ↔ vocals): reload preserving position.
     const saved = audio.currentTime;
-    audio.src = source === 'vocals' ? '/api/audio/vocals' : '/api/audio';
+    audio.src = src;
     audio.load();
     const restore = () => {
       audio.currentTime = Math.min(saved, audio.duration || saved);
@@ -59,7 +89,7 @@ export function PlayerBar({
     };
     audio.addEventListener('loadedmetadata', restore, { once: true });
     return () => audio.removeEventListener('loadedmetadata', restore);
-  }, [enabled, source]);
+  }, [enabled, source, audioPath]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!playing) {

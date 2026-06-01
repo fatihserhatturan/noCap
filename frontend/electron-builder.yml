@@ -1,0 +1,53 @@
+appId: com.nocap.app
+productName: noCap
+copyright: Copyright © 2025
+
+directories:
+  output: dist-app
+  buildResources: build
+
+files:
+  - dist/**/*
+  - dist-electron/**/*
+
+extraResources:
+  # PyInstaller onedir bundle: nocap-server/ directory → Resources/backend/nocap-server/
+  - from: build/backend/nocap-server
+    to: backend/nocap-server
+    filter:
+      - "**/*"
+  # Whisper model file → Resources/whisper_models/
+  - from: build/whisper_models
+    to: whisper_models
+    filter:
+      - "*.pt"
+
+mac:
+  category: public.app-category.music
+  icon: build/icon.icns
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+
+dmg:
+  title: noCap
+  window:
+    width: 540
+    height: 380
+  contents:
+    - x: 130
+      y: 200
+    - x: 410
+      y: 200
+      type: link
+      path: /Applications
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

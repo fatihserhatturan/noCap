@@ -165,9 +165,12 @@ def _run_openai_whisper(
     import whisper  # raises ImportError if not installed → falls back to whisper.cpp
 
     device = _torch_device()
-    # Use cached medium.pt (multilingual); fall back to downloading medium.en if needed
     model_name = _openai_whisper_model_name()
-    model = whisper.load_model(model_name, device=device)
+    bundled = _bundled_whisper_dir()
+    model = whisper.load_model(
+        model_name, device=device,
+        download_root=str(bundled) if bundled else None,
+    )
 
     raw = whisper.transcribe(
         model,
@@ -205,17 +208,27 @@ def _run_openai_whisper(
     }
 
 
+def _bundled_whisper_dir() -> Path | None:
+    """Return the whisper models dir shipped inside the app bundle, or None in dev mode."""
+    resources = os.environ.get("NOCAP_RESOURCES")
+    if resources:
+        d = Path(resources) / "whisper_models"
+        if d.exists():
+            return d
+    return None
+
+
 @functools.lru_cache(maxsize=None)
 def _openai_whisper_model_name() -> str:
     """Return the model name to use for openai-whisper (prefers already-cached models)."""
-    import os
-    cache_dir = Path(os.path.expanduser("~/.cache/whisper"))
-    # Prefer English-only medium for speed; fall back to multilingual medium if cached
+    bundled = _bundled_whisper_dir()
+    search_dir = bundled if bundled else Path(os.path.expanduser("~/.cache/whisper"))
     for name in ("medium.en", "medium"):
-        pt = cache_dir / f"{name}.pt"
-        if pt.exists():
+        if (search_dir / f"{name}.pt").exists():
             return name
-    return "medium.en"  # will be downloaded if missing
+    if bundled:
+        raise FileNotFoundError(msg("audio.needWhisperModel", path=search_dir))
+    return "medium.en"  # will be downloaded on first run
 
 
 @functools.lru_cache(maxsize=None)

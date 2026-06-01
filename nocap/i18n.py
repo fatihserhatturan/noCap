@@ -55,6 +55,7 @@ MESSAGES = {
     "pipeline.syllablesMapped": "{count} syllables mapped",
     "audio.needLibrosa": "librosa is required: pip install librosa",
     "audio.notFound": "Audio file not found: {path}",
+    "audio.needWhisperModel": "Whisper model not found in bundled resources at {path}.",
     "audio.needWhisperCpp": "whisper.cpp CLI is required. Install `whisper-cpp` or set NOCAP_WHISPER_CPP_BIN.",
     "audio.needWhisperCppModel": "whisper.cpp medium.en model not found at {path}.",
     "audio.loadingWhisperModel": "Loading model...",

@@ -57,6 +57,7 @@ h3 {
   flex: 1;
   min-width: 0;
   overflow: auto;
+  overscroll-behavior: contain;
   padding: calc(var(--header-h) + 24px) 18px 24px;
   scroll-padding-top: var(--header-h);
   display: flex;
