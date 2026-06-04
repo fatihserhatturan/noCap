@@ -6,7 +6,7 @@
 
 <p align="center">
   A hip-hop flow & rhythm analyzer that maps every syllable to the beat grid —
-  with real-time visualization, rhyme detection, and deep timing metrics.
+  with real-time visualization, rhyme detection,  and deep timing metrics.
 </p>
 
 <p align="center">
