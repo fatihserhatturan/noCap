@@ -19,7 +19,7 @@ def parse(source: str | Path) -> list[TimedLine]:
       - .srt files  (SubRip subtitle format)
       - plain text  (one line per lyric, no timestamps)
     """
-    if isinstance(source, Path) or (isinstance(source, str) and "\n" not in source and Path(source).exists()):
+    if isinstance(source, Path) or (isinstance(source, str) and "\n" not in source and Path(source).is_file()):
         path = Path(source)
         text = path.read_text(encoding="utf-8")
         suffix = path.suffix.lower()
