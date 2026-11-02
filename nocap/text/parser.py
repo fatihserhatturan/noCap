@@ -51,23 +51,35 @@ def _detect_format(text: str) -> str:
 
 # ── LRC parser ────────────────────────────────────────────────────────────────
 
-_LRC_TAG_RE = re.compile(r"\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)")
+_LRC_TIME_RE = re.compile(r"\[(\d{2}):(\d{2})\.(\d{2,3})\]")
+
+
+def _lrc_stamp_seconds(minutes: str, seconds: str, frac_digits: str) -> float:
+    # fractions may be 2 (centiseconds) or 3 (milliseconds) digits
+    frac = int(frac_digits) / (100 if len(frac_digits) == 2 else 1000)
+    return int(minutes) * 60 + int(seconds) + frac
 
 
 def _parse_lrc(text: str) -> list[TimedLine]:
     lines: list[TimedLine] = []
     for raw in text.splitlines():
         raw = raw.strip()
-        m = _LRC_TAG_RE.match(raw)
-        if not m:
+        stamps: list[float] = []
+        pos = 0
+        while True:
+            m = _LRC_TIME_RE.match(raw, pos)
+            if not m:
+                break
+            stamps.append(_lrc_stamp_seconds(*m.groups()))
+            pos = m.end()
+        if not stamps:
             continue
-        minutes, seconds, centis, lyric = m.groups()
-        # centis may be 2 or 3 digits
-        frac = int(centis) / (100 if len(centis) == 2 else 1000)
-        start = int(minutes) * 60 + int(seconds) + frac
-        lyric = lyric.strip()
-        if lyric:
+        lyric = raw[pos:].strip()
+        if not lyric:
+            continue
+        for start in stamps:
             lines.append(TimedLine(start=round(start, 3), text=lyric))
+    lines.sort(key=lambda line: line.start)
     return lines
 
 
