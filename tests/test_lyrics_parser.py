@@ -27,6 +27,17 @@ class LrcTest(unittest.TestCase):
         text = "[ar:Someone]\n[ti:Song]\n[00:01.00] hi\n[00:02.00]\n[00:03.00]  there  \n"
         self.assertEqual([(1.0, "hi"), (3.0, "there")], _pairs(parse(text)))
 
+    def test_several_timestamps_on_one_line_repeat_the_lyric(self) -> None:
+        text = "[00:12.00][00:48.00] chorus line\n"
+        self.assertEqual([(12.0, "chorus line"), (48.0, "chorus line")], _pairs(parse(text)))
+
+    def test_repeated_lines_are_sorted_by_start_time(self) -> None:
+        text = "[00:48.00][00:12.00] chorus line\n[00:30.00] verse\n"
+        self.assertEqual(
+            [(12.0, "chorus line"), (30.0, "verse"), (48.0, "chorus line")],
+            _pairs(parse(text)),
+        )
+
 
 class SrtTest(unittest.TestCase):
     def test_cues_get_their_start_time_and_text(self) -> None:
