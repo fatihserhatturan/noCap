@@ -1,5 +1,5 @@
 import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
-import { kick } from '../beat';
+import { kick } from './beat';
 import { COLORS } from '../theme';
 import { bars } from '../timeline';
 import { SECTIONS } from './timeline';

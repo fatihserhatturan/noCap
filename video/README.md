@@ -1,6 +1,6 @@
 # noCap promo video
 
-A 54-second promo (1920×1080, 30 fps), edited in code with [Remotion](https://www.remotion.dev).
+Two 54-second promos (1920×1080, 30 fps), edited in code with [Remotion](https://www.remotion.dev): `Promo` and `PromoV3` (in `src/v3/`).
 The footage is a scripted walkthrough: a track is analyzed, explored, its lyrics fixed
 and exported. The API is faked during the recording (`capture/mocks.mjs`), so nothing
 waits on Whisper and only the demo verse is shown. The soundtrack is a 140 BPM trap
@@ -26,6 +26,21 @@ npm run render                                                # out/nocap-promo.
 ```
 
 `npm run studio` opens the timeline for previewing.
+
+### Promo v3
+
+`PromoV3` reuses the same footage and sound effects, over "Hype | Drill Music" by
+kontraa ([Pixabay Content License](https://pixabay.com/service/license-summary/)). The track
+is not committed: download it from
+[Pixabay](https://pixabay.com/music/trap-hype-drill-music-438398/), then
+
+```bash
+../.venv/bin/python audio/cut_music.py path/to/kontraa-hype-drill-music-438398.mp3
+npm run render:v3                                             # out/nocap-promo-v3.mp4
+```
+
+`cut_music.py` cuts whole bars of the track into the edit's 30-bar shape (both are
+140 BPM) and writes `public/audio/music.wav` and `src/v3/beatmap.json`.
 
 ## Layout
 

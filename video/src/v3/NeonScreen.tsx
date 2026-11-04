@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { AbsoluteFill, Easing, Freeze, interpolate, OffthreadVideo, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
-import { kick } from '../beat';
+import { kick } from './beat';
 import { COLORS } from '../theme';
 import { SOURCE, bars } from '../timeline';
 import { Label } from './Label';

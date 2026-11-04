@@ -1,5 +1,5 @@
 import { Audio, Sequence, staticFile } from 'remotion';
-import { DROPS, GAPS } from '../beat';
+import { DROPS, GAPS } from './beat';
 import marks from '../marks.json';
 import { FPS, bars } from '../timeline';
 import { REPORT_AT } from './FloatingCards';
@@ -15,19 +15,19 @@ type Hit = { at: number; sound: Sound; volume: number };
 
 const RISER_SECONDS = 3.4;
 
-/** Every sound effect of promo v3 with the frame it starts on. Same beat as v2. */
+/** Every sound effect of promo v3 with the frame it starts on, over the kontraa cut. */
 function hits(): Hit[] {
   const list: Hit[] = [
-    { at: bars(SECTIONS.logo), sound: 'impact', volume: 0.45 },
+    { at: bars(SECTIONS.logo), sound: 'impact', volume: 0.3 },
     { at: CLICK_AT, sound: 'click', volume: 0.5 },
-    { at: OUTRO_V3.icon, sound: 'chime', volume: 0.45 },
+    { at: OUTRO_V3.icon, sound: 'chime', volume: 0.3 },
     { at: OUTRO_V3.final, sound: 'subdrop', volume: 0.3 },
   ];
   for (const at of SENTENCE_FRAMES) list.push({ at, sound: 'tick', volume: 0.3 });
   for (const at of TYPE_FRAMES) list.push({ at, sound: 'tick', volume: 0.14 });
   for (const gap of GAPS) list.push({ at: gap - Math.round(RISER_SECONDS * FPS), sound: 'riser', volume: 0.35 });
   for (const at of DROPS) {
-    list.push({ at, sound: 'subdrop', volume: 0.3 });
+    list.push({ at, sound: 'subdrop', volume: 0.15 });
     list.push({ at, sound: 'glitch', volume: 0.25 });
   }
   for (const bar of [SECTIONS.screen, SECTIONS.cards, SECTIONS.light, SECTIONS.outro]) list.push({ at: bars(bar) - 8, sound: 'whoosh', volume: 0.35 });
@@ -46,7 +46,7 @@ function hits(): Hit[] {
 export function SoundtrackV3() {
   return (
     <>
-      <Audio src={staticFile('audio/beat.wav')} volume={0.6} />
+      <Audio src={staticFile('audio/music.wav')} volume={0.55} />
       {hits().map((hit, i) => (
         <Sequence key={i} from={hit.at} layout="none">
           <Audio src={staticFile(`audio/${hit.sound}.wav`)} volume={hit.volume} />
