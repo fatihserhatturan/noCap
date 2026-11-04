@@ -1,4 +1,5 @@
-import { ChevronDown, Download, FileCode2, FileImage, FileText } from 'lucide-react';
+import { ChevronDown, Download, FileCode2, FileImage, FileSpreadsheet, FileText } from 'lucide-react';
+import { downloadBarCsv } from '../../export/barCsv';
 import { downloadFlowmapPng, downloadFlowmapSvg } from '../../export/flowExport';
 import { downloadReportPng } from '../../export/reportExport';
 import { downloadReportPdf } from '../../export/reportPdf';
@@ -35,6 +36,9 @@ export function ExportMenu({ flowmap, isReport }: { flowmap: FlowMap; isReport: 
               </button>
               <button role="menuitem" className="menu-item" onClick={() => run(() => downloadReportPdf(flowmap.metadata.title))}>
                 <FileText size={15} /> <span>{t('export.reportPdf')}</span>
+              </button>
+              <button role="menuitem" className="menu-item" onClick={() => run(() => downloadBarCsv(flowmap))}>
+                <FileSpreadsheet size={15} /> <span>{t('export.barCsv')}</span>
               </button>
             </>
           )}

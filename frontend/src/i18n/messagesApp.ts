@@ -14,6 +14,7 @@ export const appMessages = {
   'export.svg': 'Flow map as SVG',
   'export.reportPng': 'Report as PNG',
   'export.reportPdf': 'Report as PDF',
+  'export.barCsv': 'Bar data as CSV',
   'export.unavailable': 'Image export is not available here.',
   'export.failed': 'Could not render the export image.',
   'library.title': 'Library',
