@@ -1,5 +1,5 @@
 import { AbsoluteFill, interpolate, Sequence, useCurrentFrame } from 'remotion';
-import { DROPS, GAPS } from '../beat';
+import { DROPS, GAPS } from './beat';
 import { Flash, Grain, Vignette } from '../components/Fx';
 import { bars } from '../timeline';
 import { FloatingCards } from './FloatingCards';
