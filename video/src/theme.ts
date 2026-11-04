@@ -2,6 +2,8 @@ import '@fontsource/inter/400.css';
 import '@fontsource/inter/600.css';
 import '@fontsource/inter/800.css';
 import '@fontsource/jetbrains-mono/500.css';
+import '@fontsource/poppins/600.css';
+import '@fontsource/poppins/700.css';
 import '@fontsource/space-grotesk/500.css';
 import '@fontsource/space-grotesk/700.css';
 
@@ -19,12 +21,15 @@ export const COLORS = {
   blue: '#3fb8ff',
   green: '#5ee6a0',
   yellow: '#ffd23f',
+  violet: '#8a3dff',
 };
 
 export const FONTS = {
   body: "'Inter', sans-serif",
   display: "'Space Grotesk', 'Inter', sans-serif",
   mono: "'JetBrains Mono', ui-monospace, monospace",
+  /** Rounded geometric headlines for promo v3. */
+  headline: "'Poppins', 'Inter', sans-serif",
 };
 
 /** Font faces the first frame needs before it is rendered. */
@@ -35,4 +40,6 @@ export const FONT_FACES = [
   `500 20px ${FONTS.mono}`,
   `500 20px ${FONTS.display}`,
   `700 20px ${FONTS.display}`,
+  `600 20px ${FONTS.headline}`,
+  `700 20px ${FONTS.headline}`,
 ];

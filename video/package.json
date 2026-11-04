@@ -6,11 +6,13 @@
   "scripts": {
     "studio": "remotion studio src/index.ts",
     "render": "remotion render src/index.ts Promo out/nocap-promo.mp4",
-    "still": "remotion still src/index.ts Promo"
+    "still": "remotion still src/index.ts Promo",
+    "render:v3": "remotion render src/index.ts PromoV3 out/nocap-promo-v3.mp4"
   },
   "dependencies": {
     "@fontsource/inter": "5.1.1",
     "@fontsource/jetbrains-mono": "5.1.2",
+    "@fontsource/poppins": "5.1.0",
     "@fontsource/space-grotesk": "^5.1.1",
     "@remotion/cli": "4.0.537",
     "react": "19.1.0",
